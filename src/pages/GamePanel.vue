@@ -1,5 +1,35 @@
 <template>
   <div class="game-panel">
+    <!-- 模式选择遮罩层 -->
+    <div v-if="showModeSelection" class="mode-selection-overlay">
+      <div class="mode-selection-container">
+        <h2 class="mode-title">选择游戏模式</h2>
+        <div class="mode-options">
+          <div class="mode-card training-mode" @click="selectMode('training')">
+            <div class="mode-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                <path d="M12 2L3 7L12 12L21 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M3 17L12 22L21 17" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M3 12L12 17L21 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h3 class="mode-name">训练模式</h3>
+            <p class="mode-description">可以看见英文和中文<br>适合学习和练习</p>
+          </div>
+          
+          <div class="mode-card challenge-mode" @click="selectMode('challenge')">
+            <div class="mode-icon">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none">
+                <path d="M9 12L11 14L15 10M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <h3 class="mode-name">挑战模式</h3>
+            <p class="mode-description">只能看见中文<br>考验你的记忆力</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 顶部导航栏 -->
     <header class="game-header">
       <div class="header-left">
@@ -52,6 +82,25 @@
           <span class="stat-label">错误：</span>
           <span class="stat-value">{{ errors }}次</span>
         </div>
+        
+        <!-- 游戏控制按钮 -->
+        <div class="game-controls">
+          <button class="control-btn pause-btn" @click="pauseGame">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <rect x="6" y="4" width="4" height="16" fill="currentColor"/>
+              <rect x="14" y="4" width="4" height="16" fill="currentColor"/>
+            </svg>
+            暂停
+          </button>
+          <button class="control-btn exit-btn" @click="exitGame">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <polyline points="16,17 21,12 16,7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <line x1="21" y1="12" x2="9" y2="12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            退出
+          </button>
+        </div>
       </aside>
 
       <!-- 中央游戏区域 -->
@@ -68,7 +117,7 @@
             }"
           >
             <div class="difficulty-label">{{ getDifficultyLabel(word.difficulty) }}</div>
-            <div class="english-word">{{ word.english }}</div>
+            <div v-if="gameMode === 'training'" class="english-word">{{ word.english }}</div>
             <div class="chinese-word">{{ word.chinese }}</div>
           </div>
         </div>
@@ -179,6 +228,8 @@ export default {
   },
   data() {
     return {
+      showModeSelection: true,
+      gameMode: null, // 'training' 或 'challenge'
       score: 368,
       timeUsed: 90, // 秒
       remainingWords: 31,
@@ -209,8 +260,8 @@ export default {
           position: { x: 400, y: 20 }
         },
         {
-          english: 'apple',
-          chinese: '苹果',
+          english: 'dog',
+          chinese: '狗',
           difficulty: 1,
           completed: false,
           position: { x: 650, y: 50 }
@@ -223,37 +274,37 @@ export default {
           position: { x: 300, y: 120 }
         },
         {
-          english: 'apple',
-          chinese: '苹果',
+          english: 'book',
+          chinese: '书',
           difficulty: 1,
           completed: false,
           position: { x: 550, y: 130 }
         },
         {
-          english: 'apple',
-          chinese: '苹果',
+          english: 'water',
+          chinese: '水',
           difficulty: 1,
           completed: false,
           position: { x: 150, y: 200 }
         },
         {
-          english: 'apple',
-          chinese: '苹果',
+          english: 'house',
+          chinese: '房子',
           difficulty: 1,
           completed: false,
           position: { x: 450, y: 180 }
         },
         {
-          english: 'apple',
-          chinese: '苹果',
-          difficulty: 1,
+          english: 'computer',
+          chinese: '电脑',
+          difficulty: 2,
           completed: false,
           position: { x: 700, y: 200 }
         },
         {
-          english: 'apple',
-          chinese: '苹果',
-          difficulty: 2,
+          english: 'beautiful',
+          chinese: '美丽的',
+          difficulty: 3,
           completed: false,
           position: { x: 350, y: 250 }
         },
@@ -268,6 +319,12 @@ export default {
     }
   },
   methods: {
+    selectMode(mode) {
+      this.gameMode = mode
+      this.showModeSelection = false
+      console.log('选择模式:', mode)
+    },
+    
     goBack() {
       this.$router.push({ name: 'levels' })
     },
@@ -304,6 +361,18 @@ export default {
         // 帮助逻辑
         console.log('使用帮助')
       }
+    },
+    
+    pauseGame() {
+      // 暂停游戏逻辑
+      console.log('暂停游戏')
+      // 可以在这里添加暂停弹窗或状态切换
+    },
+    
+    exitGame() {
+      // 退出游戏逻辑
+      console.log('退出游戏')
+      this.$router.push({ name: 'levels' })
     }
   }
 }
@@ -317,6 +386,95 @@ export default {
   flex-direction: column;
   color: white;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  position: relative;
+}
+
+/* 模式选择遮罩层 */
+.mode-selection-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+}
+
+.mode-selection-container {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 40px;
+  text-align: center;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.mode-title {
+  font-size: 28px;
+  font-weight: bold;
+  margin-bottom: 30px;
+  color: white;
+}
+
+.mode-options {
+  display: flex;
+  gap: 30px;
+  justify-content: center;
+}
+
+.mode-card {
+  width: 200px;
+  height: 250px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  padding: 30px 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.mode-card:hover {
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+
+.training-mode:hover {
+  border-color: #74b9ff;
+  box-shadow: 0 10px 30px rgba(116, 185, 255, 0.3);
+}
+
+.challenge-mode:hover {
+  border-color: #fd79a8;
+  box-shadow: 0 10px 30px rgba(253, 121, 168, 0.3);
+}
+
+.mode-icon {
+  margin-bottom: 20px;
+  color: white;
+}
+
+.mode-name {
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 15px;
+  color: white;
+}
+
+.mode-description {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.5;
 }
 
 /* 顶部导航栏 */
@@ -435,6 +593,47 @@ export default {
 .stat-value {
   font-weight: bold;
   color: white;
+}
+
+/* 游戏控制按钮 */
+.game-controls {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.control-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: white;
+}
+
+.pause-btn {
+  background: rgba(255, 193, 7, 0.8);
+}
+
+.pause-btn:hover {
+  background: rgba(255, 193, 7, 1);
+  transform: translateY(-1px);
+}
+
+.exit-btn {
+  background: rgba(220, 53, 69, 0.8);
+}
+
+.exit-btn:hover {
+  background: rgba(220, 53, 69, 1);
+  transform: translateY(-1px);
 }
 
 /* 游戏区域 */
@@ -632,6 +831,16 @@ export default {
 
 /* 响应式设计 */
 @media (max-width: 768px) {
+  .mode-options {
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .mode-card {
+    width: 250px;
+    height: 200px;
+  }
+  
   .game-content {
     flex-direction: column;
     padding: 10px;
