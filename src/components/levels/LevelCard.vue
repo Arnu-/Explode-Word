@@ -66,10 +66,16 @@ defineEmits(['select', 'mouseover', 'mouseleave']);
   color: var(--color-text-primary);
   text-align: left;
   overflow: hidden;
-  transition: transform .15s ease, box-shadow .2s ease;
+  transition: transform .3s ease, box-shadow .3s ease, background .3s ease;
   outline: 1px solid var(--color-border);
   outline-offset: -1px;
   cursor: pointer;
+}
+
+.card:hover:not(.locked):not(.coming-soon) {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(79, 70, 229, 0.4);
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
 }
 
 .card.locked {

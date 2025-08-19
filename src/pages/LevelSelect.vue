@@ -54,32 +54,39 @@
 
     <!-- 进度条区域 -->
     <div class="progress-container content-layer">
-      <div class="progress-header">
-        <span class="progress-label">游戏进度</span>
-        <span class="progress-value">24/48</span>
-      </div>
-      
-      <div class="progress-bar">
-        <div class="progress-fill" :style="{ width: progressPercent + '%' }"></div>
-      </div>
-      
-      <div class="progress-stats">
-        <div class="stars-stat">
-          <div class="stars-icons">
+      <!-- 游戏进度条 -->
+      <div class="progress-section">
+        <div class="progress-header">
+          <span class="progress-label">游戏进度</span>
+          <span class="progress-value">24/48</span>
+        </div>
+        
+        <div class="progress-bar-container">
+          <div class="progress-bar">
+            <div class="progress-fill game-progress" :style="{ width: progressPercent + '%' }"></div>
+          </div>
+          <div class="progress-icon stars-icons">
             <img src="../../assets/CodeBubbyAssets/20_13/1.svg" alt="星星" />
             <img src="../../assets/CodeBubbyAssets/20_13/2.svg" alt="星星" />
             <img src="../../assets/CodeBubbyAssets/20_13/3.svg" alt="星星" />
           </div>
-          <div class="stars-count">{{ collectedStars }}/{{ totalStars }}</div>
-          <div class="stars-label">收集星星</div>
+        </div>
+      </div>
+      
+      <!-- 游戏成就条 -->
+      <div class="progress-section">
+        <div class="progress-header">
+          <span class="progress-label">游戏成就</span>
+          <span class="progress-value">{{ achievements }}/{{ achievementsTotal }}</span>
         </div>
         
-        <div class="achievement-stat">
-          <div class="achievement-icon">
+        <div class="progress-bar-container">
+          <div class="progress-bar">
+            <div class="progress-fill achievement-progress" :style="{ width: achievementPercent + '%' }"></div>
+          </div>
+          <div class="progress-icon achievement-icon">
             <img src="../../assets/CodeBubbyAssets/20_13/4.svg" alt="成就" />
           </div>
-          <div class="achievement-count">{{ achievements }}/{{ achievementsTotal }}</div>
-          <div class="achievement-label">成就完成</div>
         </div>
       </div>
     </div>
@@ -208,6 +215,7 @@ const collectedStars = computed(() => allLevels.value.reduce((a,l)=>a+l.stars,0)
 const achievements = 18;
 const achievementsTotal = 30;
 const progressPercent = computed(() => Math.min(100, Math.round((collectedStars.value/totalStars)*100)));
+const achievementPercent = computed(() => Math.min(100, Math.round((achievements/achievementsTotal)*100)));
 
 function goPage(p){ page.value = p; selected.value = pagedLevels.value[0] ?? null; }
 function prevPage(){ if(page.value>1) goPage(page.value-1); }
@@ -379,6 +387,14 @@ function handleMouseOver(event, lvl) {
   background: rgba(255, 255, 255, 0.1);
   border-radius: var(--border-radius-large);
   box-shadow: var(--shadow-header);
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.progress-section {
+  display: flex;
+  flex-direction: column;
 }
 
 .progress-header {
@@ -398,19 +414,34 @@ function handleMouseOver(event, lvl) {
   color: #ffffff; /* 白色字体 */
 }
 
+.progress-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
 .progress-bar {
-  height: 12px;
+  height: 8px; /* 更窄的进度条 */
   background: rgba(255, 255, 255, 0.2);
   border-radius: var(--border-radius-full);
   overflow: hidden;
-  margin-bottom: 24px;
+  width: calc(100% - 60px); /* 固定宽度，减去图标宽度和间距 */
 }
 
 .progress-fill {
   height: 100%;
-  background: var(--gradient-progress);
   border-radius: var(--border-radius-full);
   position: relative;
+}
+
+.game-progress {
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6); /* 蓝紫渐变 */
+}
+
+.achievement-progress {
+  background: linear-gradient(90deg, #34D399, #14B8A6); /* 绿色渐变 */
 }
 
 .progress-fill::after {
@@ -424,15 +455,11 @@ function handleMouseOver(event, lvl) {
   opacity: 0.5;
 }
 
-.progress-stats {
+.progress-icon {
   display: flex;
-  justify-content: space-between;
-}
-
-.stars-stat {
-  display: flex;
-  flex-direction: column;
   align-items: center;
+  min-width: 60px; /* 固定宽度，确保两个图标区域一致 */
+  justify-content: center;
 }
 
 .stars-icons {
@@ -441,31 +468,13 @@ function handleMouseOver(event, lvl) {
 }
 
 .stars-icons img {
-  width: 23px;
-  height: 20px;
-}
-
-.stars-count {
-  font-size: 14px;
-  font-weight: 700;
-  margin-top: 4px;
-  color: #ffffff; /* 白色字体 */
-}
-
-.stars-label {
-  font-size: 12px;
-  color: #cbd5e1; /* 浅色字体 */
-}
-
-.achievement-stat {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  width: 20px;
+  height: 18px;
 }
 
 .achievement-icon {
-  width: 48px;
-  height: 48px;
+  width: 28px;
+  height: 28px;
   background: linear-gradient(90deg, #34D399 0%, #14B8A6 100%);
   border-radius: var(--border-radius-full);
   display: flex;
@@ -474,20 +483,8 @@ function handleMouseOver(event, lvl) {
 }
 
 .achievement-icon img {
-  width: 23px;
-  height: 20px;
-}
-
-.achievement-count {
-  font-size: 14px;
-  font-weight: 700;
-  margin-top: 4px;
-  color: #ffffff; /* 白色字体 */
-}
-
-.achievement-label {
-  font-size: 12px;
-  color: #cbd5e1; /* 浅色字体 */
+  width: 16px;
+  height: 16px;
 }
 
 /* 关卡网格 */
