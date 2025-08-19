@@ -37,7 +37,7 @@
         :key="lvl.id"
         :level="lvl"
         :selected="selected?.id === lvl.id"
-        @select="lvl.status !== 'coming-soon' ? selected = lvl : null"
+        @select="lvl.status !== 'coming-soon' && lvl.status !== 'locked' ? startLevel(lvl) : (lvl.status !== 'coming-soon' ? selected = lvl : null)"
         @mouseover="lvl.status === 'locked' || lvl.status !== 'coming-soon' ? handleMouseOver($event, lvl) : null"
         @mouseleave="hoveredLevel = null"
       />
@@ -222,9 +222,9 @@ function prevPage(){ if(page.value>1) goPage(page.value-1); }
 function nextPage(){ if(page.value<totalPages.value) goPage(page.value+1); }
 
 function startLevel(lvl){
-  // TODO: 触发游戏开始（路由跳转或事件）
+  // 跳转到游戏页面
   console.log('start level:', lvl.id);
-  alert(`开始游戏：${lvl.title} (关卡 ${lvl.id})`);
+  router.push({ name: 'game', params: { levelId: lvl.id } });
 }
 
 // 处理鼠标悬停事件
