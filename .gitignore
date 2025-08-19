@@ -31,4 +31,4 @@ coverage
 
 # codebuddy
 .codebuddy/
-assets/
+/assets/

@@ -1,7 +1,9 @@
 <template>
   <div class="level-select-page">
-    <!-- 顶部导航栏 -->
-    <header class="header">
+    <!-- 添加半透明蒙版底 -->
+    <div class="page-overlay"></div>
+    <!-- 页面标题栏 -->
+    <!-- <div class="page-header">
       <div class="header-left">
         <button class="back-button" @click="navigateToHome">
           <img src="../../assets/CodeBubbyAssets/20_13/45.svg" alt="返回" />
@@ -26,10 +28,32 @@
           <img src="../../assets/CodeBubbyAssets/20_13/47.svg" alt="设置" />
         </button>
       </div>
-    </header>
+    </div> -->
+
+    <!-- 关卡网格 (固定3x3布局) -->
+    <div class="levels-grid content-layer">
+      <LevelCard
+        v-for="lvl in displayedLevels"
+        :key="lvl.id"
+        :level="lvl"
+        :selected="selected?.id === lvl.id"
+        @select="lvl.status !== 'coming-soon' ? selected = lvl : null"
+        @mouseover="lvl.status === 'locked' || lvl.status !== 'coming-soon' ? handleMouseOver($event, lvl) : null"
+        @mouseleave="hoveredLevel = null"
+      />
+    </div>
+
+    <!-- 浮动详情面板 -->
+    <LevelDetailsPanel 
+      v-if="hoveredLevel" 
+      :level="hoveredLevel" 
+      @start="startLevel(hoveredLevel)"
+      class="floating-panel"
+      :style="panelPosition"
+    />
 
     <!-- 进度条区域 -->
-    <div class="progress-container">
+    <div class="progress-container content-layer">
       <div class="progress-header">
         <span class="progress-label">游戏进度</span>
         <span class="progress-value">24/48</span>
@@ -60,57 +84,11 @@
       </div>
     </div>
 
-    <!-- 关卡网格 -->
-    <div class="levels-grid">
-      <LevelCard
-        v-for="lvl in pagedLevels"
-        :key="lvl.id"
-        :level="lvl"
-        :selected="selected?.id === lvl.id"
-        @select="selected = lvl"
-      />
-    </div>
-
-    <!-- 分页 -->
-    <PaginationDots 
-      :total="totalPages" 
-      :current="page" 
-      @change="goPage"
-      @prev="prevPage"
-      @next="nextPage"
-    />
-
-    <!-- 底部详情面板 -->
-    <LevelDetailsPanel v-if="selected" :level="selected" @start="startLevel(selected)"/>
-
-    <!-- 底部导航栏 -->
-    <nav class="bottom-nav">
-      <div class="nav-item">
-        <img src="../../assets/CodeBubbyAssets/20_13/48.svg" alt="首页" class="nav-icon" />
-        <span class="nav-text">首页</span>
-      </div>
-      <div class="nav-item">
-        <img src="../../assets/CodeBubbyAssets/20_13/49.svg" alt="排行榜" class="nav-icon" />
-        <span class="nav-text">排行榜</span>
-      </div>
-      <div class="nav-item active">
-        <img src="../../assets/CodeBubbyAssets/20_13/50.svg" alt="关卡" class="nav-icon" />
-        <span class="nav-text">关卡</span>
-      </div>
-      <div class="nav-item">
-        <img src="../../assets/CodeBubbyAssets/20_13/51.svg" alt="商店" class="nav-icon" />
-        <span class="nav-text">商店</span>
-      </div>
-      <div class="nav-item">
-        <img src="../../assets/CodeBubbyAssets/20_13/52.svg" alt="个人" class="nav-icon" />
-        <span class="nav-text">个人</span>
-      </div>
-    </nav>
   </div>
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import LevelCard from '@/components/levels/LevelCard.vue';
 import PaginationDots from '@/components/levels/PaginationDots.vue';
@@ -151,12 +129,78 @@ const allLevels = ref([
   // 更多关卡...
 ]);
 
-const page = ref(1);
-const pageSize = 6;
-const totalPages = computed(() => Math.ceil(allLevels.value.length / pageSize));
-const pagedLevels = computed(() => allLevels.value.slice((page.value-1)*pageSize, page.value*pageSize));
+// 创建固定的3x3布局，不足9个的用"待开放"占位
+const fixedGridSize = 9; // 3x3布局
+const displayedLevels = computed(() => {
+  const levels = [...allLevels.value];
+  // 如果关卡数量不足9个，添加"待开放"占位卡片
+  while (levels.length < fixedGridSize) {
+    levels.push({
+      id: `coming-soon-${levels.length + 1}`,
+      title: '待开放',
+      difficulty: '未知',
+      status: 'coming-soon',
+      stars: 0,
+      estTimeMin: 0,
+      tasks: [{text:'敬请期待',done:false},{text:'敬请期待',done:false},{text:'敬请期待',done:false}],
+      bestScore: null,
+      lastPlayedAgo: '—',
+      rewardCoin: 0
+    });
+  }
+  return levels.slice(0, fixedGridSize); // 只显示前9个
+});
 
 const selected = ref(allLevels.value[3]); // 默认选中 4 号卡，贴合设计截图
+const hoveredLevel = ref(null);
+const hoveredCardRef = ref(null);
+
+// 计算浮动面板位置
+const panelPosition = computed(() => {
+  if (!hoveredCardRef.value) return {};
+  
+  // 获取卡片元素的位置和尺寸
+  const cardRect = hoveredCardRef.value.getBoundingClientRect();
+  const windowWidth = window.innerWidth;
+  const windowHeight = window.innerHeight;
+  
+  // 面板宽度
+  const panelWidth = 400;
+  const panelHeight = 300; // 估计高度
+  
+  // 判断卡片在屏幕的位置
+  const isRightHalf = cardRect.left + cardRect.width/2 > windowWidth/2;
+  const isBottomHalf = cardRect.top + cardRect.height/2 > windowHeight/2;
+  
+  // 根据卡片位置决定面板出现的方向
+  let left, top;
+  
+  if (isRightHalf) {
+    // 卡片在右侧，面板显示在左侧
+    left = `${cardRect.left - panelWidth - 10}px`;
+  } else {
+    // 卡片在左侧，面板显示在右侧
+    left = `${cardRect.right + 10}px`;
+  }
+  
+  // 垂直方向上居中对齐
+  top = `${cardRect.top + cardRect.height/2 - panelHeight/2}px`;
+  
+  // 确保面板不会超出屏幕
+  if (parseFloat(left) < 0) {
+    left = '10px';
+  } else if (parseFloat(left) + panelWidth > windowWidth) {
+    left = `${windowWidth - panelWidth - 10}px`;
+  }
+  
+  if (parseFloat(top) < 0) {
+    top = '10px';
+  } else if (parseFloat(top) + panelHeight > windowHeight) {
+    top = `${windowHeight - panelHeight - 10}px`;
+  }
+  
+  return { left, top };
+});
 
 // 顶部统计（示例）
 const totalStars = 144;
@@ -174,27 +218,68 @@ function startLevel(lvl){
   console.log('start level:', lvl.id);
   alert(`开始游戏：${lvl.title} (关卡 ${lvl.id})`);
 }
+
+// 处理鼠标悬停事件
+function handleMouseOver(event, lvl) {
+  if (lvl.status === 'locked' )
+{
+  return;
+}
+  hoveredLevel.value = lvl;
+  // 获取当前悬停的卡片元素
+  hoveredCardRef.value = event.currentTarget;
+}
 </script>
 
 <style scoped>
 @import '@/assets/theme.css';
 
-.level-select-page {
-  min-height: 100vh;
-  background: var(--gradient-background);
-  color: var(--color-text-primary);
-  padding-bottom: var(--footer-height);
-  position: relative;
+.floating-panel {
+  position: fixed;
+  z-index: 100;
+  pointer-events: auto; /* 允许点击面板上的元素 */
+  transition: all 0.3s ease;
+  width: 400px; /* 设置合适的宽度 */
+  max-width: 90vw; /* 响应式处理 */
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
 }
 
-/* 顶部导航栏 */
-.header {
+/* 确保内容在蒙版上方 */
+.content-layer {
+  position: relative;
+  z-index: 1;
+}
+
+.level-select-page {
+  min-height: 100vh;
+  color: var(--color-text-primary);
+  position: relative;
+  padding-top: 1rem;
+  overflow: hidden; /* 防止蒙版溢出 */
+}
+
+/* 半透明蒙版底 */
+.page-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(5px);
+  z-index: 0;
+  border-radius: var(--border-radius-large);
+  box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+/* 页面标题栏 */
+.page-header {
   height: var(--header-height);
-  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
+  margin-bottom: 1rem;
 }
 
 .header-left {
@@ -304,12 +389,13 @@ function startLevel(lvl){
 
 .progress-label {
   font-size: 14px;
-  color: var(--color-text-secondary);
+  color: #cbd5e1; /* 浅色字体 */
 }
 
 .progress-value {
   font-size: 14px;
   font-weight: 700;
+  color: #ffffff; /* 白色字体 */
 }
 
 .progress-bar {
@@ -363,11 +449,12 @@ function startLevel(lvl){
   font-size: 14px;
   font-weight: 700;
   margin-top: 4px;
+  color: #ffffff; /* 白色字体 */
 }
 
 .stars-label {
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: #cbd5e1; /* 浅色字体 */
 }
 
 .achievement-stat {
@@ -395,11 +482,12 @@ function startLevel(lvl){
   font-size: 14px;
   font-weight: 700;
   margin-top: 4px;
+  color: #ffffff; /* 白色字体 */
 }
 
 .achievement-label {
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: #cbd5e1; /* 浅色字体 */
 }
 
 /* 关卡网格 */
@@ -411,42 +499,7 @@ function startLevel(lvl){
   margin-bottom: 32px;
 }
 
-/* 底部导航栏 */
-.bottom-nav {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: var(--footer-height);
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: space-between;
-  padding: 0 24px;
-}
-
-.nav-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 80px;
-  height: 100%;
-}
-
-.nav-icon {
-  width: 18px;
-  height: 16px;
-  margin-bottom: 4px;
-}
-
-.nav-text {
-  font-size: 12px;
-  color: #9CA3AF;
-}
-
-.nav-item.active .nav-text {
-  color: #60A5FA;
-}
+/* 底部导航栏已移至App.vue */
 
 @media (max-width: 1200px) {
   .levels-grid {

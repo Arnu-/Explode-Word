@@ -32,7 +32,6 @@
       </div>
 
       <div class="right-content">
-        <button class="start-button" @click="$emit('start')">开始游戏</button>
         <div class="last-played">上次游玩: {{ level.lastPlayedAgo }}</div>
       </div>
     </div>
@@ -61,11 +60,18 @@ defineEmits(['start']);
 .panel {
   margin-top: 12px;
   border-radius: var(--border-radius-large);
-  background: rgba(49, 46, 129, 0.80);
+  background: linear-gradient(135deg, #06b6d4 0%, #3b82f6 100%); /* 蓝绿渐变色背景 */
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-header);
   outline: 1px solid var(--color-border);
   outline-offset: -1px;
+  backdrop-filter: blur(8px); /* 添加模糊效果 */
+  animation: fadeIn 0.2s ease-in-out; /* 添加淡入动画 */
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .panel-content {
@@ -82,6 +88,7 @@ defineEmits(['start']);
   margin: 0 0 8px;
   font-size: 20px;
   font-weight: 700;
+  color: #ffffff; /* 标题改为白色 */
 }
 
 .meta {
@@ -114,7 +121,7 @@ defineEmits(['start']);
 
 .time {
   font-size: 14px;
-  color: var(--color-text-secondary);
+  color: #cbd5e1; /* 更亮的浅灰色文本 */
 }
 
 .score-section {
@@ -124,6 +131,7 @@ defineEmits(['start']);
 .score-label {
   font-size: 14px;
   margin-bottom: 4px;
+  color: #e2e8f0; /* 浅灰色文本 */
 }
 
 .score-value {
@@ -133,6 +141,7 @@ defineEmits(['start']);
   position: absolute;
   right: 25px;
   margin-top: -20px;
+  color: #ffffff; /* 白色文本 */
 }
 
 .stars {
@@ -158,6 +167,7 @@ defineEmits(['start']);
 
 .task-text {
   font-size: 14px;
+  color: #e2e8f0; /* 浅灰色文本 */
 }
 
 .right-content {
@@ -172,13 +182,15 @@ defineEmits(['start']);
   padding: 15px 30px;
   border-radius: var(--border-radius-full);
   border: none;
-  background: var(--gradient-primary);
+  background: linear-gradient(135deg, #f97316 0%, #ec4899 100%); /* 橙粉渐变色按钮 */
   color: white;
   font-weight: 700;
   font-size: 16px;
   cursor: pointer;
   box-shadow: var(--shadow-button);
   transition: transform 0.2s;
+  pointer-events: auto; /* 确保按钮可点击 */
+  z-index: 101; /* 确保按钮在最上层 */
 }
 
 .start-button:hover {
@@ -187,6 +199,6 @@ defineEmits(['start']);
 
 .last-played {
   font-size: 12px;
-  color: var(--color-text-secondary);
+  color: #cbd5e1; /* 更亮的浅灰色文本 */
 }
 </style>

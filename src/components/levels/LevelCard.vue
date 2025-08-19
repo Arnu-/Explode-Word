@@ -4,24 +4,28 @@
     :class="[{ 
       selected, 
       locked: level.status === 'locked',
+      'coming-soon': level.status === 'coming-soon',
       active: selected
     }]"
     @click="$emit('select', level)"
-    :disabled="level.status === 'locked'"
+    @mouseover="$emit('mouseover', $event)"
+    @mouseleave="$emit('mouseleave')"
+    :disabled="level.status === 'locked' || level.status === 'coming-soon'"
   >
     <div class="card-content">
       <div class="top">
         <span class="index">{{ level.id }}</span>
-        <span class="chip" :class="difficultyClass">{{ level.difficulty }}</span>
+        <span class="chip" :class="difficultyClass">{{ level.difficulty }} ({{ difficultyClass }})</span>
       </div>
 
       <div class="center">
         <div class="state">
           <img v-if="level.status === 'completed'" src="../../assets/CodeBubbyAssets/20_13/5.svg" alt="完成" class="status-icon" />
           <img v-else-if="level.status === 'available'" src="../../assets/CodeBubbyAssets/20_13/17.svg" alt="可用" class="status-icon" />
-          <img v-else src="../../assets/CodeBubbyAssets/20_13/29.svg" alt="锁定" class="status-icon" />
+          <img v-else-if="level.status === 'locked'" src="../../assets/CodeBubbyAssets/20_13/29.svg" alt="锁定" class="status-icon" />
+          <span v-else-if="level.status === 'coming-soon'" class="coming-soon-text">敬请期待</span>
         </div>
-        <StarRating :value="level.stars" />
+        <StarRating v-if="level.status !== 'coming-soon'" :value="level.stars" :disable="level.status === 'locked'"/>
       </div>
     </div>
     
@@ -47,7 +51,7 @@ const difficultyClass = computed(() => {
   }
 });
 
-defineEmits(['select']);
+defineEmits(['select', 'mouseover', 'mouseleave']);
 </script>
 
 <style scoped>
@@ -73,6 +77,20 @@ defineEmits(['select']);
   box-shadow: var(--shadow-card-locked);
   outline: 1px solid rgba(55, 65, 81, 0.5);
   cursor: not-allowed;
+}
+
+.card.coming-soon {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7));
+  box-shadow: var(--shadow-card-locked);
+  outline: 1px solid rgba(55, 65, 81, 0.5);
+  cursor: not-allowed;
+  opacity: 0.8;
+}
+
+.coming-soon-text {
+  color: #94a3b8;
+  font-size: 16px;
+  font-weight: 700;
 }
 
 .card.active {
@@ -108,6 +126,7 @@ defineEmits(['select']);
 .index {
   font-weight: 700;
   font-size: 24px;
+  color: #ffffff; /* 浅色字体 */
 }
 
 .card.locked .index {

@@ -1,0 +1,59 @@
+:root {
+  /* 颜色 */
+  --color-primary: #3B82F6;
+  --color-secondary: #A855F7;
+  --color-background-dark: #312E81;
+  --color-background-medium: #4338CA;
+  --color-background-light: #581C87;
+  --color-text-primary: #FFFFFF;
+  --color-text-secondary: #E9D5FF;
+  --color-border: rgba(99, 102, 241, 0.5);
+  
+  /* 难度标签颜色 */
+  --color-easy-bg: rgba(34, 197, 94, 0.2);
+  --color-easy-text: #4ADE80;
+  
+  --color-medium-bg: rgba(234, 179, 8, 0.2);
+  --color-medium-text: #FACC15;
+  
+  --color-hard-bg: rgba(239, 68, 68, 0.2);
+  --color-hard-text: #F87171;
+  
+  --color-unknown-bg: rgba(55, 65, 81, 0.2);
+  --color-unknown-text: #6B7280;
+  
+  /* 渐变 */
+  --gradient-primary: linear-gradient(90deg, #3B82F6 0%, #9333EA 100%);
+  --gradient-progress: linear-gradient(90deg, #3B82F6 0%, #A855F7 100%);
+  --gradient-background: linear-gradient(180deg, #312E81 0%, #581C87 100%);
+  --gradient-card-active: linear-gradient(135deg, rgba(59, 130, 246, 0.20) 0%, rgba(168, 85, 247, 0.20) 100%);
+  --gradient-card-normal: rgba(55, 48, 163, 0.60);
+  --gradient-card-locked: rgba(31, 41, 55, 0.40);
+  
+  /* 阴影 */
+  --shadow-card-normal: 0px 10px 15px -3px rgba(49, 46, 129, 0.30), 0px 4px 6px -4px rgba(49, 46, 129, 0.30);
+  --shadow-card-locked: 0px 10px 15px -3px rgba(49, 46, 129, 0.10), 0px 4px 6px -4px rgba(49, 46, 129, 0.10);
+  --shadow-button: 0px 10px 15px -3px rgba(126, 34, 206, 0.50), 0px 4px 6px -4px rgba(126, 34, 206, 0.50);
+  --shadow-header: 0px 10px 15px -3px rgba(88, 28, 135, 0.20), 0px 4px 6px -4px rgba(88, 28, 135, 0.20);
+  
+  /* 圆角 */
+  --border-radius-small: 8px;
+  --border-radius-medium: 12px;
+  --border-radius-large: 16px;
+  --border-radius-full: 9999px;
+  
+  /* 尺寸 */
+  --header-height: 72px;
+  --footer-height: 60px;
+  --card-height: 138px;
+  --card-width: 446px;
+}
+
+/* 全局样式 */
+body {
+  font-family: 'Noto Sans SC', sans-serif;
+  margin: 0;
+  padding: 0;
+  background: var(--gradient-background);
+  color: var(--color-text-primary);
+}
