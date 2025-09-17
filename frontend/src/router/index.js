@@ -5,8 +5,10 @@ import SectionSelect from '../pages/SectionSelect.vue'
 import GamePanel from '../pages/GamePanel.vue'
 import GameConfig from '../pages/GameConfig.vue'
 import Login from '../pages/Login.vue'
-import Dashboard from '../pages/Dashboard.vue'
+
 import Profile from '../pages/Profile.vue'
+import UserProfile from '../pages/UserProfile.vue'
+import Settings from '../pages/Settings.vue'
 import VocabularyManagement from '../pages/VocabularyManagement.vue'
 import { authManager } from '../utils/auth.js'
 
@@ -25,13 +27,7 @@ const router = createRouter({
     {
       path: '/',
       name: 'home',
-      redirect: '/dashboard'
-    },
-    {
-      path: '/dashboard',
-      name: 'dashboard',
-      component: Dashboard,
-      meta: { requiresAuth: true }
+      redirect: '/game'
     },
     {
       path: '/game',
@@ -67,8 +63,14 @@ const router = createRouter({
     {
       path: '/profile',
       name: 'profile',
-      component: Profile,
+      component: UserProfile,
       meta: { requiresAuth: true }
+    },
+    {
+      path: '/settings',
+      name: 'settings',
+      component: Settings,
+      meta: { requiresAuth: false }
     },
     {
       path: '/vocabulary',
@@ -94,7 +96,7 @@ router.beforeEach((to, from, next) => {
   }
 
   if (hideForAuth && isAuthenticated) {
-    next('/dashboard')
+    next('/game')
     return
   }
 

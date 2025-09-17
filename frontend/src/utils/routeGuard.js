@@ -44,7 +44,7 @@ export function handleLoginRedirect() {
     localStorage.removeItem('redirect_after_login')
     return redirectPath
   }
-  return '/dashboard' // 默认跳转到仪表板
+  return '/game' // 默认跳转到游戏页面
 }
 
 /**

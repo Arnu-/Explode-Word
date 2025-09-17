@@ -57,7 +57,7 @@ async function responseInterceptor(response, requestConfig) {
     const currentPath = router.currentRoute.value.path
     if (currentPath !== '/login' && requiresAuth(requestConfig.url || '')) {
       // 保存当前路径，登录后可以重定向回来
-      const redirectPath = currentPath !== '/' ? currentPath : '/dashboard'
+      const redirectPath = currentPath !== '/' ? currentPath : '/game'
       
       // 延迟执行重定向，避免在请求过程中立即跳转
       setTimeout(() => {
@@ -107,7 +107,7 @@ export function handleAuthError() {
   if (currentPath !== '/login') {
     router.push({
       path: '/login',
-      query: { redirect: currentPath !== '/' ? currentPath : '/dashboard' }
+      query: { redirect: currentPath !== '/' ? currentPath : '/game' }
     })
   }
 }

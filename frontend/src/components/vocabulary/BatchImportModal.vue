@@ -28,7 +28,7 @@
             <label>批量输入单词</label>
             <textarea
               v-model="manualInput"
-              placeholder="请按以下格式输入，每行一个单词：&#10;单词,翻译,词性,发音,音标,例句,例句翻译,备注,难度等级,标签&#10;&#10;示例：&#10;hello,你好,int.,həˈloʊ,/həˈloʊ/,Hello world,你好世界,常用问候语,1,基础,口语&#10;world,世界,n.,wɜːrld,/wɜːrld/,The world is beautiful,世界很美丽,,2,基础"
+              placeholder="请按以下格式输入，每行一个单词：&#10;单词,翻译,词性,发音,音标,例句,例句翻译,备注,难度等级,标签1,标签2,...&#10;&#10;示例：&#10;hello,你好,int.,həˈloʊ,/həˈloʊ/,Hello world,你好世界,常用问候语,1,基础,口语&#10;suppose,假设，认为,v.,səˈpəʊz,/səˈpəʊz/,I suppose you're right.,我认为你是对的,,3,Unit 1,词汇"
               rows="12"
               class="form-textarea"
             ></textarea>
@@ -38,9 +38,9 @@
             <h4>格式说明：</h4>
             <ul>
               <li><strong>必填字段：</strong>单词、翻译</li>
-              <li><strong>可选字段：</strong>词性、发音、音标、例句、例句翻译、备注、难度等级(1-5)、标签(用分号分隔)</li>
+              <li><strong>字段顺序：</strong>单词,翻译,词性,发音,音标,例句,例句翻译,备注,难度等级(1-5),标签1,标签2,...</li>
               <li><strong>分隔符：</strong>使用英文逗号(,)分隔各字段</li>
-              <li><strong>标签：</strong>多个标签用分号(;)分隔，如：基础;口语;重点</li>
+              <li><strong>标签：</strong>可以有多个标签，每个标签作为独立字段，如：Unit 1,词汇,重点</li>
               <li><strong>空字段：</strong>可以留空，但逗号不能省略</li>
             </ul>
           </div>
@@ -86,18 +86,67 @@
 
         <!-- 预览区域 -->
         <div v-if="previewWords.length > 0" class="preview-section">
-          <h4>预览 (前{{ Math.min(previewWords.length, 5) }}条)</h4>
-          <div class="preview-list">
-            <div v-for="(word, index) in previewWords.slice(0, 5)" :key="index" class="preview-item">
-              <div class="preview-word">
-                <strong>{{ word.word }}</strong>
-                <span v-if="word.part_of_speech" class="part-of-speech">{{ word.part_of_speech }}</span>
-              </div>
-              <div class="preview-translation">{{ word.translation }}</div>
-              <div v-if="word.tags && word.tags.length > 0" class="preview-tags">
-                <span v-for="tag in word.tags" :key="tag" class="tag">{{ tag }}</span>
-              </div>
-            </div>
+          <h4>预览 (前{{ Math.min(previewWords.length, 10) }}条)</h4>
+          <div class="preview-table-container">
+            <table class="preview-table">
+              <thead>
+                <tr>
+                  <th>单词</th>
+                  <th>翻译</th>
+                  <th>词性</th>
+                  <th>发音</th>
+                  <th>音标</th>
+                  <th>例句</th>
+                  <th>例句翻译</th>
+                  <th>备注</th>
+                  <th>难度</th>
+                  <th>标签</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(word, index) in previewWords.slice(0, 10)" :key="index" class="preview-row">
+                  <td class="word-cell">
+                    <strong>{{ word.word }}</strong>
+                  </td>
+                  <td class="translation-cell">{{ word.translation }}</td>
+                  <td class="pos-cell">
+                    <span v-if="word.part_of_speech" class="part-of-speech">{{ word.part_of_speech }}</span>
+                    <span v-else class="empty-field">-</span>
+                  </td>
+                  <td class="pronunciation-cell">
+                    <span v-if="word.pronunciation" class="example-text">{{ word.pronunciation }}</span>
+                    <span v-else class="empty-field">-</span>
+                  </td>
+                  <td class="phonetic-cell">
+                    <span v-if="word.phonetic" class="example-text">{{ word.phonetic }}</span>
+                    <span v-else class="empty-field">-</span>
+                  </td>
+                  <td class="example-cell">
+                    <span v-if="word.example_sentence" class="example-text">{{ word.example_sentence }}</span>
+                    <span v-else class="empty-field">-</span>
+                  </td>
+                  <td class="example-trans-cell">
+                    <span v-if="word.example_translation" class="example-trans-text">{{ word.example_translation }}</span>
+                    <span v-else class="empty-field">-</span>
+                  </td>
+                  <td class="notes-cell">
+                    <span v-if="word.notes">{{ word.notes }}</span>
+                    <span v-else class="empty-field">-</span>
+                  </td>
+                  <td class="difficulty-cell">
+                    <span class="difficulty-badge" :class="`difficulty-${word.difficulty_level}`">
+                      {{ word.difficulty_level }}
+                    </span>
+                  </td>
+                  <td class="tags-cell">
+                    <div v-if="word.tags && word.tags.length > 0" class="tags-container">
+                      <span v-for="tag in word.tags" :key="tag" class="tag">{{ tag }}</span>
+                    </div>
+                    <span v-else class="empty-field">-</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
           <p class="preview-summary">
             共 {{ previewWords.length }} 个单词待导入
@@ -216,17 +265,59 @@ export default {
         throw new Error('至少需要单词和翻译两个字段')
       }
 
+      // 处理特殊的数据格式：翻译和词性可能合并在一起
+      let correctedParts = [...parts]
+      
+      // 检查第二个字段是否包含词性（以中文逗号+词性标记结尾）
+      if (parts.length >= 2 && parts[1].match(/，[a-zA-Z]+\.?$/)) {
+        const translationAndPos = parts[1]
+        const lastCommaIndex = translationAndPos.lastIndexOf('，')
+        if (lastCommaIndex > 0) {
+          const translation = translationAndPos.substring(0, lastCommaIndex)
+          const partOfSpeech = translationAndPos.substring(lastCommaIndex + 1)
+          
+          // 重新构建parts数组
+          correctedParts = [
+            parts[0],           // 单词
+            translation,        // 翻译
+            partOfSpeech,       // 词性
+            ...parts.slice(2)   // 其余字段
+          ]
+        }
+      }
+      
+      // 处理例句翻译字段可能包含额外内容的情况
+      if (correctedParts.length >= 7 && correctedParts[6].includes('，，')) {
+        const exampleTransParts = correctedParts[6].split('，，')
+        correctedParts[6] = exampleTransParts[0] // 例句翻译
+        
+        // 如果有额外内容，需要重新分配后续字段
+        if (exampleTransParts.length > 1) {
+          const remaining = exampleTransParts[1]
+          const remainingParts = remaining.split(',').map(p => p.trim()).filter(p => p)
+          
+          // 重新构建数组，插入备注字段和剩余字段
+          correctedParts = [
+            ...correctedParts.slice(0, 7), // 前7个字段（单词到例句翻译）
+            '', // 备注字段（空）
+            ...remainingParts, // 剩余字段（难度、标签等）
+            ...correctedParts.slice(7) // 原来的后续字段
+          ]
+        }
+      }
+
+      // 验证必填字段
       const word = {
-        word: parts[0],
-        translation: parts[1],
-        part_of_speech: parts[2] || '',
-        pronunciation: parts[3] || '',
-        phonetic: parts[4] || '',
-        example_sentence: parts[5] || '',
-        example_translation: parts[6] || '',
-        notes: parts[7] || '',
-        difficulty_level: parseInt(parts[8]) || 1,
-        tags: parts[9] ? parts[9].split(';').map(tag => tag.trim()).filter(tag => tag) : []
+        word: correctedParts[0],
+        translation: correctedParts[1],
+        part_of_speech: correctedParts[2] || '',
+        pronunciation: correctedParts[3] || '',
+        phonetic: correctedParts[4] || '',
+        example_sentence: correctedParts[5] || '',
+        example_translation: correctedParts[6] || '',
+        notes: correctedParts[7] || '',
+        difficulty_level: parseInt(correctedParts[8]) || 1,
+        tags: correctedParts.slice(9).filter(tag => tag.trim()).map(tag => tag.trim())
       }
 
       // 验证必填字段
@@ -313,9 +404,7 @@ export default {
       try {
         loading.value = true
         
-        const response = await vocabularyApi.batchCreateWords(props.groupId, {
-          words: previewWords.value
-        })
+        const response = await vocabularyApi.batchImportWords(props.groupId, previewWords.value)
 
         if (response.success) {
           emit('imported', response.data)
@@ -581,23 +670,50 @@ export default {
   font-size: 16px;
 }
 
-.preview-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+.preview-table-container {
+  overflow-x: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
 }
 
-.preview-item {
-  padding: 10px;
+.preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  min-width: 1200px;
+}
+
+.preview-table th {
   background: #f8f9fa;
-  border-radius: 4px;
+  color: #495057;
+  font-weight: 600;
+  padding: 12px 8px;
+  text-align: left;
+  border-bottom: 2px solid #e0e0e0;
+  white-space: nowrap;
+  font-size: 12px;
 }
 
-.preview-word {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 4px;
+.preview-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: top;
+  max-width: 150px;
+  word-wrap: break-word;
+}
+
+.preview-row:hover {
+  background: #f8f9ff;
+}
+
+.word-cell strong {
+  color: #333;
+  font-size: 14px;
+}
+
+.translation-cell {
+  color: #666;
+  font-weight: 500;
 }
 
 .part-of-speech {
@@ -607,27 +723,78 @@ export default {
   border-radius: 4px;
   font-size: 11px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
-.preview-translation {
+.empty-field {
+  color: #ccc;
+  font-style: italic;
+}
+
+.example-text, .example-trans-text {
+  font-size: 12px;
+  line-height: 1.4;
+  display: block;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.example-text {
   color: #666;
-  font-size: 14px;
-  margin-bottom: 6px;
 }
 
-.preview-tags {
+.example-trans-text {
+  color: #888;
+}
+
+.difficulty-badge {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  text-align: center;
+  line-height: 20px;
+  font-size: 11px;
+  font-weight: bold;
+  color: white;
+}
+
+.difficulty-1 { background: #28a745; }
+.difficulty-2 { background: #17a2b8; }
+.difficulty-3 { background: #ffc107; color: #333; }
+.difficulty-4 { background: #fd7e14; }
+.difficulty-5 { background: #dc3545; }
+
+.tags-container {
   display: flex;
-  gap: 4px;
+  flex-wrap: wrap;
+  gap: 2px;
+  max-width: 100px;
 }
 
 .tag {
   background: #e3f2fd;
   color: #1976d2;
-  padding: 2px 6px;
-  border-radius: 10px;
-  font-size: 11px;
+  padding: 1px 4px;
+  border-radius: 8px;
+  font-size: 10px;
   font-weight: 500;
+  white-space: nowrap;
 }
+
+/* 列宽控制 */
+.preview-table th:nth-child(1), .preview-table td:nth-child(1) { width: 100px; } /* 单词 */
+.preview-table th:nth-child(2), .preview-table td:nth-child(2) { width: 120px; } /* 翻译 */
+.preview-table th:nth-child(3), .preview-table td:nth-child(3) { width: 60px; }  /* 词性 */
+.preview-table th:nth-child(4), .preview-table td:nth-child(4) { width: 80px; }  /* 发音 */
+.preview-table th:nth-child(5), .preview-table td:nth-child(5) { width: 80px; }  /* 音标 */
+.preview-table th:nth-child(6), .preview-table td:nth-child(6) { width: 150px; } /* 例句 */
+.preview-table th:nth-child(7), .preview-table td:nth-child(7) { width: 150px; } /* 例句翻译 */
+.preview-table th:nth-child(8), .preview-table td:nth-child(8) { width: 100px; } /* 备注 */
+.preview-table th:nth-child(9), .preview-table td:nth-child(9) { width: 50px; }  /* 难度 */
+.preview-table th:nth-child(10), .preview-table td:nth-child(10) { width: 100px; } /* 标签 */
 
 .preview-summary {
   margin: 15px 0 0 0;

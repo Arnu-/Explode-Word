@@ -208,7 +208,7 @@ export default {
 
         if (result.success) {
           // 登录/注册成功，重定向
-          const redirectPath = route.query.redirect || '/dashboard'
+          const redirectPath = route.query.redirect || '/game'
           router.push(redirectPath)
         } else {
           error.value = result.error
@@ -224,7 +224,7 @@ export default {
     onMounted(() => {
       // 如果已经登录，直接重定向
       if (isAuthenticated.value) {
-        const redirectPath = route.query.redirect || '/dashboard'
+        const redirectPath = route.query.redirect || '/game'
         router.push(redirectPath)
       }
     })

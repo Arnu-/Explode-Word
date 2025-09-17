@@ -1,17 +1,40 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useAuth } from './utils/auth.js'
 
 const router = useRouter()
 const route = useRoute()
 
+// 使用统一的认证状态管理
+const { isAuthenticated, user: currentUser, logout } = useAuth()
+
 // 控制退出游戏确认弹窗
 const showExitConfirm = ref(false)
+
+// 控制用户菜单显示
+const showUserMenu = ref(false)
+
+// 用户等级和金币数据
+const userLevel = ref(42)
+const userLevelText = ref('大师级')
+const userCoins = ref(3250)
 
 // 判断当前是否在游戏中
 const isInGame = computed(() => {
   return route.name === 'GamePanel'
 })
+
+// 判断是否显示用户信息（等级和金币）
+const shouldShowUserInfo = computed(() => {
+  return isAuthenticated.value && currentUser.value
+})
+
+// 初始化认证状态（现在由 auth.js 自动处理）
+const initAuth = async () => {
+  // auth.js 会自动初始化认证状态
+  loadUserData()
+}
 
 // 点击返回首页按钮
 const handleGoHome = () => {
@@ -19,21 +42,114 @@ const handleGoHome = () => {
     // 如果在游戏中，显示确认弹窗
     showExitConfirm.value = true
   } else {
-    // 直接回到首页
-    router.push('/')
+    // 直接回到游戏首页
+    router.push('/game')
   }
 }
 
 // 确认退出游戏
 const confirmExit = () => {
   showExitConfirm.value = false
-  router.push('/')
+  router.push('/game')
 }
 
 // 取消退出
 const cancelExit = () => {
   showExitConfirm.value = false
 }
+
+// 点击设置按钮
+const handleSettings = () => {
+  // 跳转到设置页面或打开设置弹窗
+  router.push('/settings')
+}
+
+// 点击用户头像
+const handleUserProfile = () => {
+  try {
+    if (isAuthenticated.value) {
+      router.push('/profile')
+      showUserMenu.value = false
+    } else {
+      router.push('/login')
+    }
+  } catch (error) {
+    console.error('跳转用户资料页面失败:', error)
+    router.push('/login')
+  }
+}
+
+// 切换用户菜单显示状态
+const toggleUserMenu = () => {
+  console.log('用户头像被点击，当前认证状态:', isAuthenticated.value)
+  if (isAuthenticated.value) {
+    showUserMenu.value = !showUserMenu.value
+    console.log('菜单显示状态:', showUserMenu.value)
+  } else {
+    router.push('/login')
+  }
+}
+
+// 退出登录
+const handleLogout = () => {
+  console.log('退出登录被点击')
+  try {
+    // 使用统一的认证管理器退出登录
+    logout()
+    showUserMenu.value = false
+    
+    console.log('认证状态已重置，准备跳转到登录页')
+    
+    // 跳转到登录页
+    router.push('/login')
+  } catch (error) {
+    console.error('退出登录失败:', error)
+  }
+}
+
+// 点击外部关闭用户菜单
+const closeUserMenu = () => {
+  showUserMenu.value = false
+}
+
+// 加载用户数据
+const loadUserData = async () => {
+  try {
+    if (isAuthenticated.value && currentUser.value) {
+      // 这里可以从API获取用户的等级和金币数据
+      // 暂时使用模拟数据
+      userLevel.value = currentUser.value.level || 42
+      userLevelText.value = getLevelText(userLevel.value)
+      userCoins.value = currentUser.value.coins || 3250
+    }
+  } catch (error) {
+    console.warn('加载用户数据失败:', error)
+    // 使用默认值
+    userLevel.value = 42
+    userLevelText.value = '大师级'
+    userCoins.value = 3250
+  }
+}
+
+// 获取等级文本
+const getLevelText = (level) => {
+  if (level >= 50) return '传奇'
+  if (level >= 40) return '大师级'
+  if (level >= 30) return '专家级'
+  if (level >= 20) return '高级'
+  if (level >= 10) return '中级'
+  return '初级'
+}
+
+// 监听认证状态变化
+watch([isAuthenticated, currentUser], () => {
+  loadUserData()
+}, { immediate: false })
+
+// 组件挂载时初始化
+onMounted(() => {
+  initAuth()
+})
 </script>
 
 <template>
@@ -61,10 +177,50 @@ const cancelExit = () => {
         <span class="brand-name">WordBlast</span>
       </div>
       <div class="navbar-actions">
-        <button class="settings-button">
+        <!-- 用户等级信息 - 仅在登录时显示 -->
+        <div v-if="shouldShowUserInfo" class="user-level">
+          <div class="level-badge">
+            <span>{{ userLevel }}</span>
+          </div>
+          <span class="level-text">{{ userLevelText }}</span>
+        </div>
+        
+        <!-- 游戏币信息 - 仅在登录时显示 -->
+        <div v-if="shouldShowUserInfo" class="coins">
+          <i class="fa-solid fa-coins coin-icon"></i>
+          <span class="coin-amount">{{ userCoins.toLocaleString() }}</span>
+        </div>
+        
+        <!-- 设置按钮 -->
+        <button class="settings-button" @click="handleSettings">
           <i class="fa-solid fa-gear"></i>
         </button>
-        <div class="user-avatar">
+        
+        <!-- 用户头像和菜单 -->
+        <div class="user-menu-container" v-if="isAuthenticated">
+          <div class="user-avatar" @click="toggleUserMenu">
+            <i class="fa-solid fa-user"></i>
+          </div>
+          
+    <!-- 点击外部关闭用户菜单 -->
+    <div v-if="showUserMenu" class="menu-overlay" @click="closeUserMenu"></div>
+
+          <!-- 用户下拉菜单 -->
+          <div v-if="showUserMenu" class="user-dropdown" @click.stop>
+            <div class="dropdown-item" @click="handleUserProfile">
+              <i class="fa-solid fa-user"></i>
+              <span>个人资料</span>
+            </div>
+            <div class="dropdown-divider"></div>
+            <div class="dropdown-item logout-item" @click="handleLogout">
+              <i class="fa-solid fa-sign-out-alt"></i>
+              <span>退出登录</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 未登录时的用户头像 -->
+        <div v-else class="user-avatar" @click="handleUserProfile">
           <i class="fa-solid fa-user"></i>
         </div>
       </div>
@@ -277,7 +433,57 @@ html, body {
 .navbar-actions {
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 1.5rem;
+}
+
+/* 用户等级样式 */
+.user-level {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.level-badge {
+  width: 2rem;
+  height: 2rem;
+  background: linear-gradient(90deg, #FACC15 0%, #F97316 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: white;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+}
+
+.level-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: white;
+}
+
+/* 游戏币样式 */
+.coins {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 0.75rem;
+  border-radius: 1rem;
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.coin-icon {
+  font-size: 1rem;
+  color: #fbbf24;
+}
+
+.coin-amount {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
 }
 
 .settings-button {
@@ -285,10 +491,16 @@ html, body {
   background: none;
   border: none;
   cursor: pointer;
-  transition: color 0.3s;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.3s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .settings-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
   color: #f9a8d4;
 }
 
@@ -305,6 +517,82 @@ html, body {
   align-items: center;
   justify-content: center;
   color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+  box-shadow: 0 2px 8px rgba(96, 165, 250, 0.3);
+}
+
+.user-avatar:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(96, 165, 250, 0.4);
+}
+
+/* 用户菜单容器 */
+.user-menu-container {
+  position: relative;
+  z-index: 1002;
+}
+
+/* 用户下拉菜单 */
+.user-dropdown {
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  right: 0;
+  background: rgba(30, 27, 75, 0.95);
+  backdrop-filter: blur(8px);
+  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  min-width: 160px;
+  z-index: 9999;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  color: white;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  font-size: 0.875rem;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.dropdown-item i {
+  font-size: 1rem;
+  width: 1rem;
+  text-align: center;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background-color: rgba(255, 255, 255, 0.1);
+  margin: 0.25rem 0;
+}
+
+.logout-item {
+  color: #fca5a5;
+}
+
+.logout-item:hover {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #f87171;
+}
+
+/* 菜单遮罩层 */
+.menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 1000px;
+  z-index: 998;
 }
 
 /* 主内容区域 */
@@ -447,6 +735,66 @@ html, body {
   50% {
     opacity: 0.4;
     transform: scale(1.05);
+  }
+}
+
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .navbar {
+    padding: 0 1rem;
+  }
+  
+  .navbar-actions {
+    gap: 0.75rem;
+  }
+  
+  .user-level .level-text {
+    display: none; /* 在小屏幕上隐藏等级文字 */
+  }
+  
+  .coins {
+    padding: 0.375rem 0.5rem;
+  }
+  
+  .coin-amount {
+    font-size: 0.75rem;
+  }
+  
+  .brand-name {
+    display: none; /* 在小屏幕上隐藏品牌名称 */
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar-actions {
+    gap: 0.5rem;
+  }
+  
+  .level-badge {
+    width: 1.75rem;
+    height: 1.75rem;
+    font-size: 0.625rem;
+  }
+  
+  .coins {
+    padding: 0.25rem 0.5rem;
+  }
+  
+  .coin-amount {
+    font-size: 0.625rem;
+  }
+  
+  .user-avatar {
+    width: 2rem;
+    height: 2rem;
+  }
+  
+  .settings-button {
+    padding: 0.375rem;
+  }
+  
+  .settings-button i {
+    font-size: 1rem;
   }
 }
 </style>

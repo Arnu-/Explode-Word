@@ -2,33 +2,32 @@
   <div class="level-select-page">
     <!-- 添加半透明蒙版底 -->
     <div class="page-overlay"></div>
-    <!-- 页面标题栏 -->
-    <!-- <div class="page-header">
-      <div class="header-left">
-        <button class="back-button" @click="navigateToHome">
-          <img :src="backIcon" alt="返回" />
-        </button>
+    
+    <!-- 页面标题栏 - 简化版，移除用户信息到外层框架 -->
+    <div class="page-header content-layer">
+      <div class="header-center">
         <h1 class="page-title">选择关卡</h1>
       </div>
-      
-      <div class="header-right">
-        <div class="user-level">
-          <div class="level-badge">
-            <span>42</span>
-          </div>
-          <span class="level-text">大师级</span>
+    </div>
+
+    <!-- 词库信息栏 -->
+    <div class="vocabulary-info content-layer">
+      <div class="vocabulary-current" v-if="currentLibrary">
+        <div class="vocabulary-label">当前词库:</div>
+        <div class="vocabulary-name">{{ currentLibrary.name }}</div>
+        <div class="vocabulary-stats">
+          <span>{{ currentLibrary.groups_count || 0 }}个词组</span>
+          <span>{{ currentLibrary.words_count || 0 }}个单词</span>
         </div>
-        
-        <div class="coins">
-          <img :src="coinIcon" alt="金币" class="coin-icon" />
-          <span class="coin-amount">3,250</span>
-        </div>
-        
-        <button class="settings-button">
-          <img :src="settingsIcon" alt="设置" />
-        </button>
       </div>
-    </div> -->
+      <div class="vocabulary-current" v-else>
+        <div class="vocabulary-label">当前词库:</div>
+        <div class="vocabulary-name">未选择</div>
+      </div>
+      <button @click="showLibrarySelectModal = true" class="switch-library-btn">
+        切换词库
+      </button>
+    </div>
 
     <!-- 加载状态 -->
     <div v-if="loading" class="loading-container content-layer">
@@ -102,6 +101,21 @@
       </div>
     </div>
 
+    <!-- 词库选择弹窗 -->
+    <LibrarySelectModal
+      v-if="showLibrarySelectModal"
+      @close="showLibrarySelectModal = false"
+      @select="handleLibrarySelect"
+      @create-library="handleCreateLibrary"
+    />
+
+    <!-- 创建词库弹窗 -->
+    <LibraryModal
+      v-if="showLibraryModal"
+      @close="showLibraryModal = false"
+      @saved="handleLibraryCreated"
+    />
+
   </div>
 </template>
 
@@ -111,12 +125,12 @@ import { useRouter } from 'vue-router';
 import LevelCard from '@/components/levels/LevelCard.vue';
 import PaginationDots from '@/components/levels/PaginationDots.vue';
 import LevelDetailsPanel from '@/components/levels/LevelDetailsPanel.vue';
+import LibrarySelectModal from '@/components/vocabulary/LibrarySelectModal.vue';
+import LibraryModal from '@/components/vocabulary/LibraryModal.vue';
 import levelService from '@/services/levelService.js';
+import { vocabularyApi } from '@/utils/vocabularyApi.js';
 
 // 导入图片资源
-import backIcon from '@/assets/CodeBubbyAssets/20_13/45.svg';
-import coinIcon from '@/assets/CodeBubbyAssets/20_13/46.svg';
-import settingsIcon from '@/assets/CodeBubbyAssets/20_13/47.svg';
 import star1Icon from '@/assets/CodeBubbyAssets/20_13/1.svg';
 import star2Icon from '@/assets/CodeBubbyAssets/20_13/2.svg';
 import star3Icon from '@/assets/CodeBubbyAssets/20_13/3.svg';
@@ -124,19 +138,36 @@ import achievementIcon from '@/assets/CodeBubbyAssets/20_13/4.svg';
 
 const router = useRouter();
 
-function navigateToHome() {
-  router.push('/');
-}
-
 // 数据状态
 const allLevels = ref([]);
 const loading = ref(false);
 const error = ref(null);
 const userProgress = ref(null);
 
-// 创建固定的3x3布局，不足9个的用"待开放"占位
+// 词库相关状态
+const currentLibrary = ref(null);
+const showLibrarySelectModal = ref(false);
+const showLibraryModal = ref(false);
+
+// 创建固定的3x3布局，基于当前词库的词组生成关卡
 const fixedGridSize = 9; // 3x3布局
 const displayedLevels = computed(() => {
+  if (!currentLibrary.value) {
+    // 如果没有选择词库，显示占位卡片
+    return Array.from({ length: fixedGridSize }, (_, index) => ({
+      id: `no-library-${index + 1}`,
+      title: '请选择词库',
+      difficulty: '未知',
+      status: 'locked',
+      stars: 0,
+      estTimeMin: 0,
+      tasks: [{text:'请先选择词库',done:false},{text:'请先选择词库',done:false},{text:'请先选择词库',done:false}],
+      bestScore: null,
+      lastPlayedAgo: '—',
+      rewardCoin: 0
+    }));
+  }
+
   const levels = [...allLevels.value];
   // 如果关卡数量不足9个，添加"待开放"占位卡片
   while (levels.length < fixedGridSize) {
@@ -209,45 +240,72 @@ const panelPosition = computed(() => {
 
 // 加载关卡数据
 const loadLevels = async () => {
+  if (!currentLibrary.value) {
+    // 如果没有选择词库，清空关卡数据
+    allLevels.value = [];
+    return;
+  }
+
   try {
     loading.value = true;
     error.value = null;
     
-    // 获取关卡列表和用户进度
-    const [levelsResponse, progressResponse] = await Promise.all([
-      levelService.getLevels(),
-      levelService.getUserProgress()
-    ]);
+    // 获取当前词库的词组列表，每个词组对应一个关卡
+    const groupsResponse = await vocabularyApi.getGroups(currentLibrary.value.id);
+    console.log('词组API响应:', groupsResponse);
     
-    console.log('关卡API响应:', levelsResponse);
-    console.log('进度API响应:', progressResponse);
+    if (groupsResponse.success) {
+      // 处理不同的数据格式
+      let groupsData = groupsResponse.data
+      if (groupsData && typeof groupsData === 'object') {
+        // 如果data是对象，可能包含groups字段
+        if (groupsData.groups && Array.isArray(groupsData.groups)) {
+          groupsData = groupsData.groups
+        } else if (Array.isArray(groupsData)) {
+          // 如果data本身就是数组
+          groupsData = groupsData
+        } else {
+          // 如果都不是，设为空数组
+          groupsData = []
+        }
+      } else {
+        groupsData = []
+      }
+      
+      // 将词组转换为关卡数据
+      allLevels.value = groupsData.map((group, index) => ({
+        id: group.id,
+        title: group.name,
+        difficulty: getDifficultyText(group.difficulty_level),
+        status: 'available', // 所有关卡都可用
+        stars: 0, // 可以根据用户进度设置
+        estTimeMin: Math.max(5, Math.ceil((group.words_count || 10) / 2)), // 根据单词数量估算时间
+        tasks: [
+          { text: `学习 ${group.words_count || 0} 个单词`, done: false },
+          { text: '完成词汇测试', done: false },
+          { text: '达到80%正确率', done: false }
+        ],
+        bestScore: null,
+        lastPlayedAgo: '—',
+        rewardCoin: (group.words_count || 10) * 10, // 根据单词数量计算奖励
+        groupId: group.id, // 保存词组ID用于游戏
+        wordsCount: group.words_count || 0
+      }));
+    }
     
-    // 处理关卡数据 - API直接返回 { levels: [...] } 格式
-    const levelsData = levelsResponse?.levels || [];
-    allLevels.value = levelService.formatLevelsForUI(levelsData);
-    
-    // 处理进度数据
+    // 获取用户进度
+    const progressResponse = await levelService.getUserProgress();
     userProgress.value = progressResponse?.progress || progressResponse || {
       total_stars: 0,
       completed_levels: 0,
-      total_levels: 8,
+      total_levels: allLevels.value.length,
       completion_percentage: 0
     };
     
   } catch (err) {
     console.error('加载关卡数据失败:', err);
-    error.value = err.message || '加载失败，使用模拟数据';
-    // 如果API失败，使用模拟数据
-    allLevels.value = levelService.getMockLevels();
-    userProgress.value = {
-      total_levels: 9,
-      completed_levels: 3,
-      progress_percent: 33.33,
-      total_stars: 6,
-      achievements: 18,
-      achievements_total: 30,
-      achievement_percent: 60
-    };
+    error.value = err.message || '加载失败';
+    allLevels.value = [];
   } finally {
     loading.value = false;
   }
@@ -294,23 +352,103 @@ function prevPage(){ if(page.value>1) goPage(page.value-1); }
 function nextPage(){ if(page.value<totalPages.value) goPage(page.value+1); }
 
 async function startLevel(lvl) {
+  // 检查是否选择了词库
+  if (!currentLibrary.value) {
+    showLibrarySelectModal.value = true;
+    return;
+  }
+
+  // 检查关卡状态
+  if (lvl.status === 'locked' || lvl.status === 'coming-soon') {
+    return;
+  }
+
   try {
+    // 如果关卡有对应的词组ID，传递给游戏页面
+    const gameParams = { levelId: lvl.id };
+    if (lvl.groupId) {
+      gameParams.groupId = lvl.groupId;
+      gameParams.libraryId = currentLibrary.value.id;
+    }
+    
     // 调用开始关卡API
     await levelService.startLevel(lvl.id);
     
     // 跳转到游戏页面
-    console.log('start level:', lvl.id);
-    router.push({ name: 'game', params: { levelId: lvl.id } });
+    console.log('start level:', lvl.id, 'with params:', gameParams);
+    router.push({ 
+      name: 'game', 
+      params: gameParams,
+      query: {
+        libraryId: currentLibrary.value.id,
+        groupId: lvl.groupId
+      }
+    });
   } catch (err) {
     console.error('开始关卡失败:', err);
     // 即使API失败也允许进入游戏（用于开发测试）
-    router.push({ name: 'game', params: { levelId: lvl.id } });
+    router.push({ 
+      name: 'game', 
+      params: { levelId: lvl.id },
+      query: {
+        libraryId: currentLibrary.value.id,
+        groupId: lvl.groupId
+      }
+    });
   }
 }
 
-// 组件挂载时加载数据
+// 词库相关方法
+const checkAndLoadLibrary = async () => {
+  // 检查本地存储中是否有选择的词库
+  const savedLibraryId = localStorage.getItem('selectedLibraryId');
+  
+  if (savedLibraryId) {
+    try {
+      const response = await vocabularyApi.getLibrary(savedLibraryId);
+      console.log('加载保存的词库响应:', response);
+      
+      if (response.success && response.data) {
+        currentLibrary.value = response.data;
+        await loadLevels();
+        return;
+      }
+    } catch (err) {
+      console.error('加载保存的词库失败:', err);
+      localStorage.removeItem('selectedLibraryId');
+    }
+  }
+  
+  // 如果没有保存的词库或加载失败，显示选择弹窗
+  showLibrarySelectModal.value = true;
+};
+
+const handleLibrarySelect = async (library) => {
+  currentLibrary.value = library;
+  localStorage.setItem('selectedLibraryId', library.id.toString());
+  showLibrarySelectModal.value = false;
+  await loadLevels();
+};
+
+const handleCreateLibrary = () => {
+  showLibrarySelectModal.value = false;
+  showLibraryModal.value = true;
+};
+
+const handleLibraryCreated = (library) => {
+  showLibraryModal.value = false;
+  showLibrarySelectModal.value = true; // 重新显示选择弹窗
+};
+
+// 获取难度文本
+const getDifficultyText = (level) => {
+  const texts = ['', '初级', '中级', '中高级', '高级', '专家级'];
+  return texts[level] || '未知';
+};
+
+// 组件挂载时检查并加载词库
 onMounted(() => {
-  loadLevels();
+  checkAndLoadLibrary();
 });
 
 // 处理鼠标悬停事件
@@ -371,99 +509,80 @@ function handleMouseOver(event, lvl) {
   height: var(--header-height);
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   padding: 0 24px;
   margin-bottom: 1rem;
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.back-button {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--border-radius-full);
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
+.header-center {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
 }
 
-.back-button img {
-  width: 14px;
-  height: 16px;
+/* 词库信息栏 */
+.vocabulary-info {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--border-radius-large);
+  box-shadow: var(--shadow-header);
+}
+
+.vocabulary-current {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.vocabulary-label {
+  font-size: 14px;
+  color: #cbd5e1;
+  font-weight: 500;
+}
+
+.vocabulary-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.vocabulary-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.switch-library-btn {
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border: none;
+  border-radius: var(--border-radius-medium);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.switch-library-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
 }
 
 .page-title {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 700;
   margin: 0;
-}
-
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: 24px;
-}
-
-.user-level {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.level-badge {
-  width: 32px;
-  height: 32px;
-  background: linear-gradient(90deg, #FACC15 0%, #F97316 100%);
-  border-radius: var(--border-radius-full);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.level-text {
-  font-size: 14px;
-}
-
-.coins {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.coin-icon {
-  width: 16px;
-  height: 16px;
-}
-
-.coin-amount {
-  font-size: 16px;
-  font-weight: 700;
-}
-
-.settings-button {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--border-radius-full);
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.settings-button img {
-  width: 16px;
-  height: 16px;
+  text-align: center;
+  background: linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 /* 进度条区域 */

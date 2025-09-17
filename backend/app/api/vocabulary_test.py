@@ -327,3 +327,95 @@ def get_words(group_id):
             'success': False,
             'message': f'获取单词列表失败: {str(e)}'
         }), 500
+
+
+@vocabulary_test_bp.route('/groups/<int:group_id>/words/batch', methods=['POST'])
+def batch_import_words(group_id):
+    """批量导入单词"""
+    try:
+        # 验证词组是否存在
+        group = WordGroup.query.get_or_404(group_id)
+        
+        data = request.get_json()
+        
+        if not data.get('words') or not isinstance(data['words'], list):
+            return jsonify({
+                'success': False,
+                'message': '请提供单词列表'
+            }), 400
+        
+        created_words = []
+        errors = []
+        
+        for i, word_data in enumerate(data['words']):
+            try:
+                # 验证必填字段
+                if not word_data.get('word') or not word_data.get('translation'):
+                    errors.append(f'第{i+1}行：单词和翻译为必填项')
+                    continue
+                
+                # 检查单词是否已存在（同一词组下）
+                existing = VocabularyWord.query.filter_by(group_id=group_id, word=word_data['word']).first()
+                if existing:
+                    errors.append(f'第{i+1}行：单词"{word_data["word"]}"已存在')
+                    continue
+                
+                # 处理标签
+                tags_str = ''
+                if word_data.get('tags') and isinstance(word_data['tags'], list):
+                    tags_str = ','.join([str(tag).strip() for tag in word_data['tags'] if str(tag).strip()])
+                
+                # 验证难度等级
+                difficulty_level = word_data.get('difficulty_level', 1)
+                if not isinstance(difficulty_level, int) or difficulty_level < 1 or difficulty_level > 5:
+                    difficulty_level = 1
+                
+                word = VocabularyWord(
+                    word=word_data['word'].strip(),
+                    translation=word_data['translation'].strip(),
+                    pronunciation=word_data.get('pronunciation', '').strip() if word_data.get('pronunciation') else None,
+                    phonetic=word_data.get('phonetic', '').strip() if word_data.get('phonetic') else None,
+                    part_of_speech=word_data.get('part_of_speech', '').strip() if word_data.get('part_of_speech') else None,
+                    difficulty_level=difficulty_level,
+                    example_sentence=word_data.get('example_sentence', '').strip() if word_data.get('example_sentence') else None,
+                    example_translation=word_data.get('example_translation', '').strip() if word_data.get('example_translation') else None,
+                    notes=word_data.get('notes', '').strip() if word_data.get('notes') else None,
+                    tags=tags_str if tags_str else None,
+                    group_id=group_id,
+                    is_active=True
+                )
+                
+                db.session.add(word)
+                created_words.append(word)
+                
+            except Exception as e:
+                errors.append(f'第{i+1}行：{str(e)}')
+        
+        # 提交数据库事务
+        if created_words:
+            db.session.commit()
+        
+        # 构建返回数据
+        result_data = {
+            'created_count': len(created_words),
+            'error_count': len(errors),
+            'total_count': len(data['words']),
+            'errors': errors[:10] if errors else []  # 最多返回前10个错误
+        }
+        
+        if len(errors) > 10:
+            result_data['has_more_errors'] = True
+            result_data['remaining_errors'] = len(errors) - 10
+        
+        return jsonify({
+            'success': True,
+            'message': f'批量导入完成，成功创建 {len(created_words)} 个单词' + (f'，{len(errors)} 个错误' if errors else ''),
+            'data': result_data
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'message': f'批量导入失败: {str(e)}'
+        }), 500
