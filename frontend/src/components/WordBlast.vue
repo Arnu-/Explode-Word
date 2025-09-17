@@ -44,7 +44,7 @@ import { useRouter } from 'vue-router';
 const router = useRouter();
 
 function navigateToLevels() {
-  router.push('/sections');
+  router.push('/levels');
 }
 
 function navigateToConfig() {

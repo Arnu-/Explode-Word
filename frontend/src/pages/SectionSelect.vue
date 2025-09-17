@@ -94,7 +94,7 @@ const router = useRouter();
 
 // 导航到首页
 function navigateToHome() {
-  router.push('/');
+  router.push({ name: 'home' });
 }
 
 // 章节数据
@@ -160,7 +160,7 @@ function selectSection(section) {
   // 这里可以跳转到关卡选择页面，并传递章节ID
   console.log('选择章节:', section.id);
   router.push({
-    path: '/levels',
+    name: 'levels',
     query: { sectionId: section.id }
   });
 }

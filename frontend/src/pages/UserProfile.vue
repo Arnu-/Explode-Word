@@ -217,7 +217,7 @@
           <div v-if="filteredGameHistory.length === 0" class="empty-history">
             <i class="fa-solid fa-history"></i>
             <p>暂无游戏记录</p>
-            <button @click="$router.push('/game')" class="start-game-btn">
+            <button @click="$router.push({ name: 'wordblast' })" class="start-game-btn">
               开始第一局游戏
             </button>
           </div>
@@ -517,7 +517,7 @@ const getResultText = (result) => {
 
 // 重玩关卡
 const replayLevel = (levelId) => {
-  router.push(`/game/${levelId}`)
+  router.push({ name: 'game', params: { levelId } })
 }
 
 // 加载用户数据

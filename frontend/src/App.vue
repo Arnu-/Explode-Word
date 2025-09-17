@@ -43,14 +43,14 @@ const handleGoHome = () => {
     showExitConfirm.value = true
   } else {
     // 直接回到游戏首页
-    router.push('/game')
+    router.push({ name: 'wordblast' })
   }
 }
 
 // 确认退出游戏
 const confirmExit = () => {
   showExitConfirm.value = false
-  router.push('/game')
+  router.push({ name: 'wordblast' })
 }
 
 // 取消退出
@@ -61,21 +61,21 @@ const cancelExit = () => {
 // 点击设置按钮
 const handleSettings = () => {
   // 跳转到设置页面或打开设置弹窗
-  router.push('/settings')
+  router.push({ name: 'settings' })
 }
 
 // 点击用户头像
 const handleUserProfile = () => {
   try {
     if (isAuthenticated.value) {
-      router.push('/profile')
+      router.push({ name: 'profile' })
       showUserMenu.value = false
     } else {
-      router.push('/login')
+      router.push({ name: 'login' })
     }
   } catch (error) {
     console.error('跳转用户资料页面失败:', error)
-    router.push('/login')
+    router.push({ name: 'login' })
   }
 }
 
@@ -86,7 +86,7 @@ const toggleUserMenu = () => {
     showUserMenu.value = !showUserMenu.value
     console.log('菜单显示状态:', showUserMenu.value)
   } else {
-    router.push('/login')
+    router.push({ name: 'login' })
   }
 }
 
@@ -101,7 +101,7 @@ const handleLogout = () => {
     console.log('认证状态已重置，准备跳转到登录页')
     
     // 跳转到登录页
-    router.push('/login')
+    router.push({ name: 'login' })
   } catch (error) {
     console.error('退出登录失败:', error)
   }

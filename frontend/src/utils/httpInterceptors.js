@@ -62,7 +62,7 @@ async function responseInterceptor(response, requestConfig) {
       // 延迟执行重定向，避免在请求过程中立即跳转
       setTimeout(() => {
         router.push({
-          path: '/login',
+          name: 'login',
           query: { redirect: redirectPath }
         })
       }, 100)
@@ -106,7 +106,7 @@ export function handleAuthError() {
   const currentPath = router.currentRoute.value.path
   if (currentPath !== '/login') {
     router.push({
-      path: '/login',
+      name: 'login',
       query: { redirect: currentPath !== '/' ? currentPath : '/game' }
     })
   }
