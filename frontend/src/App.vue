@@ -258,16 +258,10 @@ onMounted(() => {
 
     <!-- 底部信息栏 -->
     <div class="footer">
-      <div class="copyright">© 2023 单词爆破 | 版本 1.0.2</div>
+      <div class="copyright">© 2025 单词爆破 | 版本 0.0.2</div>
       <div class="social-links">
-        <a href="#" class="social-link">
-          <i class="fa-brands fa-twitter"></i>
-        </a>
-        <a href="#" class="social-link">
-          <i class="fa-brands fa-discord"></i>
-        </a>
-        <a href="#" class="social-link">
-          <i class="fa-brands fa-instagram"></i>
+        <a href="https://github.com/Arnu-/Explode-Word" target="_blank" class="social-link" title="GitHub 项目地址">
+          <i class="fa-brands fa-github"></i>
         </a>
       </div>
     </div>
