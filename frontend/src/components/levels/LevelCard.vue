@@ -14,8 +14,8 @@
   >
     <div class="card-content">
       <div class="top">
-        <span class="index">{{ level.id }}</span>
-        <span class="chip" :class="difficultyClass">{{ level.difficulty }} ({{ difficultyClass }})</span>
+        <span class="level-name">{{ level.title || level.id }}</span>
+        <span class="chip" :class="difficultyClass">{{ level.difficulty }}</span>
       </div>
 
       <div class="center">
@@ -49,9 +49,14 @@ const props = defineProps({
 
 const difficultyClass = computed(() => {
   switch(props.level.difficulty) {
-    case '简单': return 'easy';
-    case '中等': return 'medium';
-    case '困难': return 'hard';
+    case '简单': 
+    case '初级': return 'easy';
+    case '中等': 
+    case '中级':
+    case '中高级': return 'medium';
+    case '困难': 
+    case '高级':
+    case '专家级': return 'hard';
     default: return 'unknown';
   }
 });
@@ -134,13 +139,17 @@ defineEmits(['select', 'mouseover', 'mouseleave']);
   margin-bottom: 24px;
 }
 
-.index {
+.level-name {
   font-weight: 700;
-  font-size: 24px;
-  color: #ffffff; /* 浅色字体 */
+  font-size: 16px;
+  color: #ffffff;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.card.locked .index {
+.card.locked .level-name {
   color: #6B7280;
 }
 

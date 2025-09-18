@@ -48,9 +48,14 @@ const props = defineProps({ level: Object });
 
 const difficultyClass = computed(() => {
   switch(props.level.difficulty) {
-    case '简单': return 'easy';
-    case '中等': return 'medium';
-    case '困难': return 'hard';
+    case '简单': 
+    case '初级': return 'easy';
+    case '中等': 
+    case '中级':
+    case '中高级': return 'medium';
+    case '困难': 
+    case '高级':
+    case '专家级': return 'hard';
     default: return 'unknown';
   }
 });

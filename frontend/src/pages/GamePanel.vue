@@ -1,7 +1,25 @@
 <template>
   <div class="game-panel">
+    <!-- 加载状态遮罩层 -->
+    <div v-if="isLoadingWords" class="loading-overlay">
+      <div class="loading-container">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">正在加载单词数据...</div>
+      </div>
+    </div>
+
+    <!-- 错误状态遮罩层 -->
+    <div v-if="loadError" class="error-overlay">
+      <div class="error-container">
+        <div class="error-icon">⚠️</div>
+        <div class="error-text">{{ loadError }}</div>
+        <button class="retry-btn" @click="initializeGame">重试</button>
+        <button class="back-btn" @click="$router.push({ name: 'levels' })">返回关卡选择</button>
+      </div>
+    </div>
+
     <!-- 模式选择遮罩层 -->
-    <div v-if="showModeSelection" class="mode-selection-overlay">
+    <div v-if="showModeSelection && !isLoadingWords && !loadError" class="mode-selection-overlay">
       <div class="mode-selection-container">
         <h2 class="mode-title">选择游戏模式</h2>
         <div class="mode-options">
@@ -39,7 +57,7 @@
           </svg>
         </button>
         <div class="level-info">
-          <span class="level-text">选择关卡 第一关：小试牛刀</span>
+          <span class="level-text">{{ levelTitle || '词汇挑战' }}</span>
         </div>
       </div>
       <div class="header-right">
@@ -293,7 +311,10 @@
             v-for="key in keyboardRow3" 
             :key="key"
             class="key-btn"
-            :class="{ 'key-pressed': isKeyPressed(key) }"
+            :class="{ 
+              'key-pressed': isKeyPressed(key),
+              'space-key': key === '空格'
+            }"
             @click="inputKey(key)"
           >
             {{ key }}
@@ -340,6 +361,8 @@
 
 <script>
 import { getGameConfig, onConfigUpdate, offConfigUpdate } from '@/utils/gameConfig.js'
+import vocabularyGameService from '@/services/vocabularyGameService.js'
+import { useRoute } from 'vue-router'
 
 export default {
   name: 'GamePanel',
@@ -348,6 +371,10 @@ export default {
       type: [String, Number],
       default: 1
     }
+  },
+  setup() {
+    const route = useRoute()
+    return { route }
   },
   data() {
     return {
@@ -366,6 +393,17 @@ export default {
       gameTimer: null, // 游戏计时器
       isGamePaused: false, // 游戏是否暂停
       
+      // 游戏会话相关
+      gameSession: null,
+      sessionCode: null,
+      libraryId: null,
+      groupId: null,
+      levelTitle: '',
+      
+      // 数据加载状态
+      isLoadingWords: false,
+      loadError: null,
+      
       // 连击效果相关
       showComboEffect: false,
       comboEffectText: '',
@@ -379,7 +417,7 @@ export default {
       // 虚拟键盘布局
       keyboardRow1: ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
       keyboardRow2: ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
-      keyboardRow3: ['Z', 'X', 'C', 'V', 'B', 'N', 'M'],
+      keyboardRow3: ['Z', 'X', 'C', 'V', 'B', 'N', 'M', '空格'],
       
       // 按键状态
       pressedKeys: new Set(),
@@ -394,98 +432,7 @@ export default {
       dragOffset: { x: 0, y: 0 },
       
       // 单词卡片数据
-      wordCards: [
-        {
-          id: 1,
-          english: 'cat',
-          chinese: '猫',
-          difficulty: 1,
-          completed: false,
-          position: { x: 100, y: 50 },
-          isDragging: false
-        },
-        {
-          id: 2,
-          english: 'apple',
-          chinese: '苹果',
-          difficulty: 2,
-          completed: false,
-          position: { x: 400, y: 20 },
-          isDragging: false
-        },
-        {
-          id: 3,
-          english: 'dog',
-          chinese: '狗',
-          difficulty: 1,
-          completed: false,
-          position: { x: 650, y: 50 },
-          isDragging: false
-        },
-        {
-          id: 4,
-          english: 'pineapple',
-          chinese: '菠萝',
-          difficulty: 3,
-          completed: false,
-          position: { x: 300, y: 120 },
-          isDragging: false
-        },
-        {
-          id: 5,
-          english: 'book',
-          chinese: '书',
-          difficulty: 1,
-          completed: false,
-          position: { x: 550, y: 130 },
-          isDragging: false
-        },
-        {
-          id: 6,
-          english: 'water',
-          chinese: '水',
-          difficulty: 1,
-          completed: false,
-          position: { x: 150, y: 200 },
-          isDragging: false
-        },
-        {
-          id: 7,
-          english: 'house',
-          chinese: '房子',
-          difficulty: 1,
-          completed: false,
-          position: { x: 450, y: 180 },
-          isDragging: false
-        },
-        {
-          id: 8,
-          english: 'computer',
-          chinese: '电脑',
-          difficulty: 2,
-          completed: false,
-          position: { x: 700, y: 200 },
-          isDragging: false
-        },
-        {
-          id: 9,
-          english: 'beautiful',
-          chinese: '美丽的',
-          difficulty: 3,
-          completed: false,
-          position: { x: 350, y: 250 },
-          isDragging: false
-        },
-        {
-          id: 10,
-          english: 'congratulation',
-          chinese: '祝贺',
-          difficulty: 4,
-          completed: false,
-          position: { x: 500, y: 280 },
-          isDragging: false
-        }
-      ]
+      wordCards: []
     }
   },
   mounted() {
@@ -504,6 +451,9 @@ export default {
       this.gameConfig = config
     }
     onConfigUpdate(this.configUpdateHandler)
+    
+    // 初始化游戏数据
+    this.initializeGame()
     
     // 聚焦输入框
     this.$nextTick(() => {
@@ -589,21 +539,27 @@ export default {
         this.currentInput += key
       }
       
+      // 处理空格键
+      if (event.key === ' ') {
+        // 允许空格输入
+        return
+      }
+      
       // 处理退格键
       if (event.key === 'Backspace') {
         // 允许默认的退格行为
         return
       }
       
-      // 阻止其他非字母字符的输入
-      if (!key.match(/^[A-Z]$/) && event.key !== 'Backspace' && event.key !== 'Enter') {
+      // 阻止其他非字母字符的输入（但允许空格）
+      if (!key.match(/^[A-Z]$/) && event.key !== 'Backspace' && event.key !== 'Enter' && event.key !== ' ') {
         event.preventDefault()
       }
     },
     
-    // 处理输入变化，确保只有大写字母
+    // 处理输入变化，确保只有大写字母和空格
     handleInputChange(event) {
-      this.currentInput = event.target.value.toUpperCase().replace(/[^A-Z]/g, '')
+      this.currentInput = event.target.value.toUpperCase().replace(/[^A-Z ]/g, '')
     },
     
     // 获取碎片颜色（根据难度）
@@ -616,15 +572,98 @@ export default {
       }
       return colors[difficulty] || colors[1]
     },
+    // 初始化游戏
+    async initializeGame() {
+      try {
+        // 从URL参数获取游戏信息
+        this.libraryId = this.route.query.libraryId
+        this.groupId = this.route.query.groupId
+        this.levelTitle = this.route.query.levelTitle || '词汇挑战'
+        
+        if (!this.libraryId || !this.groupId) {
+          console.error('缺少必要的游戏参数')
+          this.loadError = '缺少必要的游戏参数'
+          return
+        }
+        
+        // 开始游戏会话
+        await this.startGameSession()
+        
+      } catch (error) {
+        console.error('初始化游戏失败:', error)
+        this.loadError = '初始化游戏失败: ' + error.message
+      }
+    },
+    
+    // 开始游戏会话
+    async startGameSession() {
+      try {
+        this.isLoadingWords = true
+        
+        const response = await vocabularyGameService.startGame(
+          parseInt(this.libraryId),
+          parseInt(this.groupId)
+        )
+        
+        if (response && response.session_code) {
+          this.sessionCode = response.session_code
+          this.gameSession = response.session
+          
+          // 加载单词数据
+          await this.loadGameWords()
+        } else {
+          throw new Error('无效的游戏会话响应')
+        }
+        
+      } catch (error) {
+        console.error('开始游戏会话失败:', error)
+        this.loadError = '开始游戏失败: ' + error.message
+      } finally {
+        this.isLoadingWords = false
+      }
+    },
+    
+    // 加载游戏单词
+    async loadGameWords() {
+      try {
+        const response = await vocabularyGameService.getGameWords(this.sessionCode)
+        
+        if (response && response.words) {
+          // 转换单词数据为游戏卡片格式
+          this.wordCards = response.words.map((word, index) => ({
+            id: word.id,
+            english: word.english,
+            chinese: word.chinese,
+            difficulty: word.difficulty_level || 1,
+            completed: false,
+            exploding: false,
+            position: { x: 0, y: 0 }, // 稍后生成随机位置
+            isDragging: false
+          }))
+          
+          // 更新剩余单词数
+          this.remainingWords = this.wordCards.length
+          
+          // 生成随机位置
+          this.generateRandomPositions()
+          
+          console.log('加载了', this.wordCards.length, '个单词')
+        } else {
+          throw new Error('无效的单词数据响应')
+        }
+        
+      } catch (error) {
+        console.error('加载单词数据失败:', error)
+        this.loadError = '加载单词失败: ' + error.message
+      }
+    },
+
     selectMode(mode) {
       this.gameMode = mode
       this.showModeSelection = false
       
       // 重置游戏状态
       this.resetGameState()
-      
-      // 选择模式后生成词卡位置
-      this.generateRandomPositions()
       
       // 开始计时
       this.startGameTimer()
@@ -838,7 +877,12 @@ export default {
     },
     
     inputKey(key) {
-      this.currentInput += key
+      // 处理空格键
+      if (key === '空格') {
+        this.currentInput += ' '
+      } else {
+        this.currentInput += key
+      }
       
       // 模拟按键效果
       this.pressedKeys.add(key)
@@ -852,7 +896,7 @@ export default {
       }
     },
     
-    submitWord() {
+    async submitWord() {
       if (!this.currentInput.trim()) return
       
       const inputWord = this.currentInput.trim().toLowerCase()
@@ -863,9 +907,13 @@ export default {
         !card.completed && card.english.toLowerCase() === inputWord
       )
       
-      if (matchedCardIndex !== -1) {
-        // 找到匹配的单词
-        const matchedCard = this.wordCards[matchedCardIndex]
+      const isCorrect = matchedCardIndex !== -1
+      let matchedCard = null
+      let wordId = null
+      
+      if (isCorrect) {
+        matchedCard = this.wordCards[matchedCardIndex]
+        wordId = matchedCard.id
         
         // 标记为完成状态，触发炸开动画
         this.wordCards[matchedCardIndex] = {
@@ -928,6 +976,21 @@ export default {
         this.showErrorFeedback()
       }
       
+      // 提交答案到服务器（如果有游戏会话）
+      if (this.sessionCode) {
+        try {
+          await vocabularyGameService.submitAnswer(this.sessionCode, {
+            word_id: wordId || (this.wordCards.length > 0 ? this.wordCards[0].id : null),
+            answer: inputWord,
+            is_correct: isCorrect,
+            time_used: 5 // 可以记录实际用时
+          })
+        } catch (error) {
+          console.error('提交答案失败:', error)
+          // 不影响游戏继续进行
+        }
+      }
+      
       // 清空输入
       this.currentInput = ''
     },
@@ -987,8 +1050,19 @@ export default {
     },
     
     // 游戏完成
-    gameComplete() {
+    async gameComplete() {
       this.stopGameTimer()
+      
+      // 结束游戏会话（如果有）
+      if (this.sessionCode) {
+        try {
+          await vocabularyGameService.finishGame(this.sessionCode)
+          console.log('游戏会话已结束')
+        } catch (error) {
+          console.error('结束游戏会话失败:', error)
+        }
+      }
+      
       this.showGameEndModal = true
       console.log('游戏完成！')
     },
@@ -1145,6 +1219,99 @@ export default {
   color: white;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   position: relative;
+}
+
+/* 加载状态遮罩层 */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+}
+
+.loading-container {
+  text-align: center;
+  color: white;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top: 4px solid white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 20px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-text {
+  font-size: 18px;
+  font-weight: 500;
+}
+
+/* 错误状态遮罩层 */
+.error-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+}
+
+.error-container {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 40px;
+  text-align: center;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  max-width: 400px;
+}
+
+.error-icon {
+  font-size: 48px;
+  margin-bottom: 20px;
+}
+
+.error-text {
+  color: white;
+  font-size: 16px;
+  margin-bottom: 30px;
+  line-height: 1.5;
+}
+
+.retry-btn, .back-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 25px;
+  cursor: pointer;
+  font-size: 16px;
+  margin: 0 10px;
+  transition: background-color 0.2s;
+}
+
+.retry-btn:hover, .back-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* 模式选择遮罩层 */
@@ -1983,6 +2150,23 @@ export default {
   background: #007bff;
   color: white;
   box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.key-btn.space-key {
+  width: 120px;
+  background: rgba(255, 255, 255, 0.8);
+  font-size: 14px;
+}
+
+.key-btn.space-key:hover {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.key-btn.space-key:active,
+.key-btn.space-key.key-pressed {
+  background: #28a745;
+  color: white;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
 }
 
 /* 底部导航栏 */

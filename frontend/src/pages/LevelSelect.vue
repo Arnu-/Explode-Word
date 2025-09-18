@@ -17,7 +17,7 @@
         <div class="vocabulary-name">{{ currentLibrary.name }}</div>
         <div class="vocabulary-stats">
           <span>{{ currentLibrary.groups_count || 0 }}个词组</span>
-          <span>{{ currentLibrary.words_count || 0 }}个单词</span>
+          <span>{{ currentLibrary.total_words_count || 0 }}个单词</span>
         </div>
       </div>
       <div class="vocabulary-current" v-else>
@@ -364,37 +364,27 @@ async function startLevel(lvl) {
   }
 
   try {
-    // 如果关卡有对应的词组ID，传递给游戏页面
-    const gameParams = { levelId: lvl.id };
-    if (lvl.groupId) {
-      gameParams.groupId = lvl.groupId;
-      gameParams.libraryId = currentLibrary.value.id;
-    }
+    // 跳转到游戏页面，使用关卡ID作为路由参数，其他信息作为查询参数
+    console.log('开始游戏:', {
+      levelId: lvl.id,
+      libraryId: currentLibrary.value.id,
+      groupId: lvl.groupId,
+      levelTitle: lvl.title
+    });
     
-    // 调用开始关卡API
-    await levelService.startLevel(lvl.id);
-    
-    // 跳转到游戏页面
-    console.log('start level:', lvl.id, 'with params:', gameParams);
     router.push({ 
       name: 'game', 
-      params: gameParams,
+      params: {
+        levelId: lvl.id
+      },
       query: {
         libraryId: currentLibrary.value.id,
-        groupId: lvl.groupId
+        groupId: lvl.groupId,
+        levelTitle: lvl.title
       }
     });
   } catch (err) {
-    console.error('开始关卡失败:', err);
-    // 即使API失败也允许进入游戏（用于开发测试）
-    router.push({ 
-      name: 'game', 
-      params: { levelId: lvl.id },
-      query: {
-        libraryId: currentLibrary.value.id,
-        groupId: lvl.groupId
-      }
-    });
+    console.error('启动游戏失败:', err);
   }
 }
 
