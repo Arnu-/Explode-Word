@@ -1,7 +1,7 @@
 /**
  * 词库管理API工具类
  */
-import { apiClient } from './api.js'
+import { apiClient } from '@/utils/api.js'
 
 export const vocabularyApi = {
   // ==================== 词库管理 ====================

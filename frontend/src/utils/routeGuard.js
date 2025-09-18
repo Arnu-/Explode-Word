@@ -2,7 +2,7 @@
  * 路由守卫 - 处理认证检查和自动跳转
  */
 
-import { authManager } from './auth.js'
+import { authManager } from '@/utils/auth.js'
 
 /**
  * 认证路由守卫

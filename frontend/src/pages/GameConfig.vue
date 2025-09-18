@@ -3,7 +3,7 @@
     <!-- 左侧配置面板 -->
     <div class="config-panel">
       <div class="config-content">
-        <h2 class="config-title">词卡设置</h2>
+
         
         <!-- 英文设置 -->
         <div class="config-section">

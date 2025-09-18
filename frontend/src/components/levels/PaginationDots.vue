@@ -1,7 +1,7 @@
 <template>
   <div class="pagination">
     <button class="nav-button prev" @click="$emit('prev')" :disabled="current <= 1">
-      <img src="../../assets/CodeBubbyAssets/20_13/37.svg" alt="上一页" />
+      <img src="@/assets/CodeBubbyAssets/20_13/37.svg" alt="上一页" />
     </button>
     
     <button 
@@ -15,7 +15,7 @@
     </button>
     
     <button class="nav-button next" @click="$emit('next')" :disabled="current >= total">
-      <img src="../../assets/CodeBubbyAssets/20_13/38.svg" alt="下一页" />
+      <img src="@/assets/CodeBubbyAssets/20_13/38.svg" alt="下一页" />
     </button>
   </div>
 </template>

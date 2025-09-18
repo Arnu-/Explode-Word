@@ -171,9 +171,9 @@
 
 <script>
 import { ref, reactive, onMounted, watch } from 'vue'
-import { vocabularyApi } from '../../utils/vocabularyApi.js'
-import WordModal from './WordModal.vue'
-import BatchImportModal from './BatchImportModal.vue'
+import { vocabularyApi } from '@/utils/vocabularyApi.js'
+import WordModal from '@/components/vocabulary/WordModal.vue'
+import BatchImportModal from '@/components/vocabulary/BatchImportModal.vue'
 
 export default {
   name: 'GroupDetailPanel',

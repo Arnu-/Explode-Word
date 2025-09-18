@@ -142,9 +142,9 @@
 
 <script>
 import { ref, reactive, onMounted, watch } from 'vue'
-import { vocabularyApi } from '../../utils/vocabularyApi.js'
-import GroupDetailPanel from './GroupDetailPanel.vue'
-import GroupModal from './GroupModal.vue'
+import { vocabularyApi } from '@/utils/vocabularyApi.js'
+import GroupDetailPanel from '@/components/vocabulary/GroupDetailPanel.vue'
+import GroupModal from '@/components/vocabulary/GroupModal.vue'
 
 export default {
   name: 'LibraryDetailPanel',

@@ -3,12 +3,7 @@
     <!-- 添加半透明蒙版底 -->
     <div class="page-overlay"></div>
     
-    <!-- 页面标题栏 - 简化版，移除用户信息到外层框架 -->
-    <div class="page-header content-layer">
-      <div class="header-center">
-        <h1 class="page-title">选择关卡</h1>
-      </div>
-    </div>
+
 
     <!-- 词库信息栏 -->
     <div class="vocabulary-info content-layer">

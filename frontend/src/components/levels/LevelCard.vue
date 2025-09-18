@@ -34,7 +34,7 @@
 </template>
 
 <script setup>
-import StarRating from './StarRating.vue';
+import StarRating from '@/components/levels/StarRating.vue';
 import { computed } from 'vue';
 
 // 导入状态图标

@@ -3,33 +3,7 @@
     <!-- 添加半透明蒙版底 -->
     <div class="page-overlay"></div>
     
-    <!-- 页面标题栏 -->
-    <div class="page-header">
-      <div class="header-left">
-        <button class="back-button" @click="navigateToHome">
-          <img src="../../assets/CodeBubbyAssets/20_13/45.svg" alt="返回" />
-        </button>
-        <h1 class="page-title">选择关卡</h1>
-      </div>
-      
-      <div class="header-right">
-        <div class="user-level">
-          <div class="level-badge">
-            <span>42</span>
-          </div>
-          <span class="level-text">大师级</span>
-        </div>
-        
-        <div class="coins">
-          <img src="../../assets/CodeBubbyAssets/20_13/46.svg" alt="金币" class="coin-icon" />
-          <span class="coin-amount">3,250</span>
-        </div>
-        
-        <button class="settings-button">
-          <img src="../../assets/CodeBubbyAssets/20_13/47.svg" alt="设置" />
-        </button>
-      </div>
-    </div>
+
 
     <!-- 章节选择区域 -->
     <div class="sections-container">
@@ -62,23 +36,23 @@
     <!-- 底部导航栏 -->
     <div class="bottom-nav">
       <div class="nav-item">
-        <img src="../../assets/CodeBubbyAssets/20_13/48.svg" alt="首页" />
+        <img src="@/assets/CodeBubbyAssets/20_13/48.svg" alt="首页" />
         <span>首页</span>
       </div>
       <div class="nav-item">
-        <img src="../../assets/CodeBubbyAssets/20_13/49.svg" alt="排行榜" />
+        <img src="@/assets/CodeBubbyAssets/20_13/49.svg" alt="排行榜" />
         <span>排行榜</span>
       </div>
       <div class="nav-item active">
-        <img src="../../assets/CodeBubbyAssets/20_13/50.svg" alt="关卡" />
+        <img src="@/assets/CodeBubbyAssets/20_13/50.svg" alt="关卡" />
         <span>关卡</span>
       </div>
       <div class="nav-item">
-        <img src="../../assets/CodeBubbyAssets/20_13/51.svg" alt="商店" />
+        <img src="@/assets/CodeBubbyAssets/20_13/51.svg" alt="商店" />
         <span>商店</span>
       </div>
       <div class="nav-item">
-        <img src="../../assets/CodeBubbyAssets/20_13/52.svg" alt="个人" />
+        <img src="@/assets/CodeBubbyAssets/20_13/52.svg" alt="个人" />
         <span>个人</span>
       </div>
     </div>

@@ -34,8 +34,28 @@
       </div>
       
       <div class="profile-content">
+        <!-- 加载状态 -->
+        <div v-if="loading" class="loading-section">
+          <div class="loading-spinner">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+            <p>加载中...</p>
+          </div>
+        </div>
+        
+        <!-- 错误状态 -->
+        <div v-else-if="error" class="error-section">
+          <div class="error-message">
+            <i class="fa-solid fa-exclamation-triangle"></i>
+            <p>{{ error }}</p>
+            <button @click="refreshData" class="retry-btn">
+              <i class="fa-solid fa-redo"></i>
+              重试
+            </button>
+          </div>
+        </div>
+        
         <!-- 个人信息 -->
-        <div class="info-section">
+        <div v-else class="info-section">
           <h3 class="section-title">个人信息</h3>
           <div class="info-form">
             <div class="form-group">
@@ -252,22 +272,27 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuth } from '@/utils/auth.js'
 import { useRouter } from 'vue-router'
+import userService from '@/services/userService.js'
 
 const { currentUser } = useAuth()
 const router = useRouter()
 
+// 数据加载状态
+const loading = ref(true)
+const error = ref(null)
+
 // 用户信息
 const userInfo = ref({
-  username: '单词大师',
-  email: 'user@example.com',
-  level: 42,
-  coins: 3250,
-  completedLevels: 28,
-  totalStars: 156,
-  totalPlayTime: '24h',
-  accuracy: '89%',
-  streak: 7,
-  createdAt: new Date('2023-01-15')
+  username: '游客',
+  email: '',
+  level: 1,
+  coins: 0,
+  completedLevels: 0,
+  totalStars: 0,
+  totalPlayTime: '0m',
+  accuracy: '0%',
+  streak: 0,
+  createdAt: new Date()
 })
 
 // 可编辑的用户信息
@@ -275,68 +300,7 @@ const editableInfo = ref({})
 const isEditing = ref(false)
 
 // 游戏历史记录
-const gameHistory = ref([
-  {
-    id: 1,
-    levelId: 1,
-    levelName: '第一关：小试牛刀',
-    mode: '训练模式',
-    score: 450,
-    duration: 180, // 秒
-    accuracy: 92,
-    result: 'success', // success, failed, perfect
-    stars: 3,
-    playedAt: new Date('2024-01-15T10:30:00')
-  },
-  {
-    id: 2,
-    levelId: 2,
-    levelName: '第二关：词汇进阶',
-    mode: '挑战模式',
-    score: 380,
-    duration: 240,
-    accuracy: 85,
-    result: 'success',
-    stars: 2,
-    playedAt: new Date('2024-01-15T14:20:00')
-  },
-  {
-    id: 3,
-    levelId: 1,
-    levelName: '第一关：小试牛刀',
-    mode: '挑战模式',
-    score: 520,
-    duration: 150,
-    accuracy: 98,
-    result: 'perfect',
-    stars: 3,
-    playedAt: new Date('2024-01-14T16:45:00')
-  },
-  {
-    id: 4,
-    levelId: 3,
-    levelName: '第三关：高级挑战',
-    mode: '训练模式',
-    score: 280,
-    duration: 300,
-    accuracy: 75,
-    result: 'failed',
-    stars: 1,
-    playedAt: new Date('2024-01-14T09:15:00')
-  },
-  {
-    id: 5,
-    levelId: 2,
-    levelName: '第二关：词汇进阶',
-    mode: '训练模式',
-    score: 420,
-    duration: 200,
-    accuracy: 88,
-    result: 'success',
-    stars: 2,
-    playedAt: new Date('2024-01-13T20:30:00')
-  }
-])
+const gameHistory = ref([])
 
 // 历史记录筛选
 const historyFilters = ref([
@@ -372,62 +336,24 @@ const filteredGameHistory = computed(() => {
 })
 
 const weeklyGames = computed(() => {
-  const now = new Date()
-  const weekStart = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000))
-  return gameHistory.value.filter(game => new Date(game.playedAt) >= weekStart).length
+  return statistics.value.weeklyGames || 0
 })
 
 const averageScore = computed(() => {
-  if (gameHistory.value.length === 0) return 0
-  const total = gameHistory.value.reduce((sum, game) => sum + game.score, 0)
-  return Math.round(total / gameHistory.value.length)
+  return statistics.value.averageScore || 0
 })
 
 // 成就数据
-const achievements = ref([
-  {
-    id: 1,
-    name: '初出茅庐',
-    description: '完成第一个关卡',
-    icon: 'fa-solid fa-star',
-    unlocked: true
-  },
-  {
-    id: 2,
-    name: '词汇达人',
-    description: '学会100个单词',
-    icon: 'fa-solid fa-book',
-    unlocked: true
-  },
-  {
-    id: 3,
-    name: '连胜王者',
-    description: '连续7天游戏',
-    icon: 'fa-solid fa-fire',
-    unlocked: true
-  },
-  {
-    id: 4,
-    name: '完美主义',
-    description: '单关卡100%正确率',
-    icon: 'fa-solid fa-bullseye',
-    unlocked: false
-  },
-  {
-    id: 5,
-    name: '时间管理',
-    description: '在限定时间内完成关卡',
-    icon: 'fa-solid fa-stopwatch',
-    unlocked: false
-  },
-  {
-    id: 6,
-    name: '收藏家',
-    description: '收集所有星星',
-    icon: 'fa-solid fa-gem',
-    unlocked: false
-  }
-])
+const achievements = ref([])
+
+// 统计数据
+const statistics = ref({
+  weeklyGames: 0,
+  averageScore: 0,
+  totalTimePlayed: 0,
+  totalCorrectAnswers: 0,
+  totalWrongAnswers: 0
+})
 
 // 开始编辑
 const startEditing = () => {
@@ -444,12 +370,25 @@ const cancelEditing = () => {
 // 保存个人资料
 const saveProfile = async () => {
   try {
-    // 这里应该调用API保存用户信息
+    loading.value = true
+    const updateData = {
+      username: editableInfo.value.username,
+      email: editableInfo.value.email,
+      nickname: editableInfo.value.nickname
+    }
+    
+    const response = await userService.updateUserProfile(updateData)
+    
+    // 更新本地数据
     userInfo.value = { ...userInfo.value, ...editableInfo.value }
     isEditing.value = false
-    console.log('个人资料已保存')
+    
+    console.log('个人资料已保存:', response.message)
   } catch (error) {
     console.error('保存个人资料失败:', error)
+    error.value = error.message || '保存失败，请重试'
+  } finally {
+    loading.value = false
   }
 }
 
@@ -521,13 +460,39 @@ const replayLevel = (levelId) => {
 }
 
 // 加载用户数据
-const loadUserData = () => {
-  if (currentUser.value) {
-    userInfo.value = {
-      ...userInfo.value,
-      ...currentUser.value
-    }
+const loadUserData = async () => {
+  try {
+    loading.value = true
+    error.value = null
+    
+    const profileData = await userService.getUserProfile()
+    const formattedData = userService.formatProfileForUI(profileData)
+    
+    // 更新各个数据
+    userInfo.value = formattedData.userInfo
+    gameHistory.value = formattedData.gameHistory
+    achievements.value = formattedData.achievements
+    statistics.value = formattedData.statistics
+    
+    console.log('用户数据加载成功:', formattedData)
+  } catch (err) {
+    console.error('加载用户数据失败:', err)
+    error.value = err.message || '加载用户数据失败'
+    
+    // 使用默认数据
+    const defaultData = userService.getDefaultProfile()
+    userInfo.value = defaultData.userInfo
+    gameHistory.value = defaultData.gameHistory
+    achievements.value = defaultData.achievements
+    statistics.value = defaultData.statistics
+  } finally {
+    loading.value = false
   }
+}
+
+// 刷新数据
+const refreshData = () => {
+  loadUserData()
 }
 
 onMounted(() => {
@@ -1173,6 +1138,57 @@ onMounted(() => {
     justify-content: space-between;
     align-items: center;
   }
+}
+
+/* 加载和错误状态样式 */
+.loading-section, .error-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--border-radius-large);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.loading-spinner, .error-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  text-align: center;
+  color: #cbd5e1;
+}
+
+.loading-spinner i {
+  font-size: 2rem;
+  color: #3b82f6;
+}
+
+.error-message i {
+  font-size: 2rem;
+  color: #ef4444;
+}
+
+.retry-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.retry-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
 }
 
 @media (max-width: 480px) {

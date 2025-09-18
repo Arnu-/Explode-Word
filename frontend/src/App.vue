@@ -1,13 +1,16 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useAuth } from './utils/auth.js'
+import { useAuth } from '@/utils/auth.js'
 
 const router = useRouter()
 const route = useRoute()
 
 // 使用统一的认证状态管理
 const { isAuthenticated, user: currentUser, logout } = useAuth()
+
+// 页面标题
+const pageTitle = ref('WordBlast')
 
 // 控制退出游戏确认弹窗
 const showExitConfirm = ref(false)
@@ -141,6 +144,11 @@ const getLevelText = (level) => {
   return '初级'
 }
 
+// 监听路由变化，更新页面标题
+watch(route, (newRoute) => {
+  pageTitle.value = newRoute.meta?.title || 'WordBlast'
+}, { immediate: true })
+
 // 监听认证状态变化
 watch([isAuthenticated, currentUser], () => {
   loadUserData()
@@ -174,7 +182,7 @@ onMounted(() => {
         <div class="logo">
           <i class="fa-solid fa-bomb"></i>
         </div>
-        <span class="brand-name">WordBlast</span>
+        <span class="page-title-text">{{ pageTitle }}</span>
       </div>
       <div class="navbar-actions">
         <!-- 用户等级信息 - 仅在登录时显示 -->
@@ -279,7 +287,8 @@ html, body {
   padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 #app {
@@ -292,7 +301,7 @@ html, body {
   position: relative;
   min-height: 100vh;
   background: linear-gradient(to bottom, #4a1d96, #312e81, #000000);
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* 背景烟花效果 */
@@ -424,10 +433,11 @@ html, body {
   font-size: 1.25rem;
 }
 
-.brand-name {
+.page-title-text {
   margin-left: 0.75rem;
   color: white;
   font-weight: 500;
+  font-size: 1rem;
 }
 
 .navbar-actions {
@@ -760,8 +770,8 @@ html, body {
     font-size: 0.75rem;
   }
   
-  .brand-name {
-    display: none; /* 在小屏幕上隐藏品牌名称 */
+  .page-title-text {
+    display: none; /* 在小屏幕上隐藏页面标题 */
   }
 }
 

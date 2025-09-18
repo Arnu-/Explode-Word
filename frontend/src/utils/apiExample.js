@@ -3,7 +3,7 @@
  * 展示如何在 Vue 组件中使用 API 客户端
  */
 
-import { apiClient } from './api.js'
+import { apiClient } from '@/utils/api.js'
 
 // 示例：用户相关 API
 export const userApi = {

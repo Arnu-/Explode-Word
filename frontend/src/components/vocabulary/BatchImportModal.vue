@@ -192,7 +192,7 @@
 
 <script>
 import { ref, computed } from 'vue'
-import { vocabularyApi } from '../../utils/vocabularyApi.js'
+import { vocabularyApi } from '@/utils/vocabularyApi.js'
 
 export default {
   name: 'BatchImportModal',

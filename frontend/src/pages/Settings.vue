@@ -3,9 +3,7 @@
     <div class="page-overlay"></div>
     
     <div class="settings-container content-layer">
-      <div class="settings-header">
-        <h1 class="page-title">游戏设置</h1>
-      </div>
+
       
       <div class="settings-content">
         <!-- 音效设置 -->

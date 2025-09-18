@@ -105,7 +105,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue'
-import { vocabularyApi } from '../../utils/vocabularyApi.js'
+import { vocabularyApi } from '@/utils/vocabularyApi.js'
 
 const emit = defineEmits(['close', 'select', 'create-library'])
 

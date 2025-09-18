@@ -3,7 +3,7 @@
  * 处理认证、错误重定向等
  */
 
-import { apiClient } from './api.js'
+import { apiClient } from '@/utils/api.js'
 import router from '@/router/index.js'
 
 // 不需要认证的路径

@@ -47,40 +47,6 @@
         </div>
       </div>
     </div>
-
-    <!-- 顶部导航栏 -->
-    <header class="game-header">
-      <div class="header-left">
-        <button class="back-btn" @click="goBack">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <path d="M15 18L9 12L15 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </button>
-        <div class="level-info">
-          <span class="level-text">{{ levelTitle || '词汇挑战' }}</span>
-        </div>
-      </div>
-      <div class="header-right">
-        <div class="user-avatar">
-          <span class="avatar-text">大</span>
-          <span class="username">师傅</span>
-        </div>
-        <div class="coins">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" fill="#FFD700"/>
-            <text x="12" y="16" text-anchor="middle" fill="#000" font-size="12" font-weight="bold">¥</text>
-          </svg>
-          <span>3,250</span>
-        </div>
-        <button class="settings-btn">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="3" stroke="white" stroke-width="2"/>
-            <path d="M12 1v6m0 10v6m11-7h-6m-10 0H1m15.5-3.5L19 4m-14 14l2.5-2.5M4 4l2.5 2.5m11 11L19 19" stroke="white" stroke-width="2"/>
-          </svg>
-        </button>
-      </div>
-    </header>
-
     <div class="game-content">
       <!-- 左侧统计面板 -->
       <aside class="stats-panel">
@@ -289,7 +255,11 @@
             v-for="key in keyboardRow1" 
             :key="key"
             class="key-btn"
-            :class="{ 'key-pressed': isKeyPressed(key) }"
+            :class="{ 
+              'key-pressed': isKeyPressed(key),
+              'key-highlighted': isKeyHighlighted(key),
+              'key-shake': isKeyShaking(key)
+            }"
             @click="inputKey(key)"
           >
             {{ key }}
@@ -300,7 +270,11 @@
             v-for="key in keyboardRow2" 
             :key="key"
             class="key-btn"
-            :class="{ 'key-pressed': isKeyPressed(key) }"
+            :class="{ 
+              'key-pressed': isKeyPressed(key),
+              'key-highlighted': isKeyHighlighted(key),
+              'key-shake': isKeyShaking(key)
+            }"
             @click="inputKey(key)"
           >
             {{ key }}
@@ -313,6 +287,8 @@
             class="key-btn"
             :class="{ 
               'key-pressed': isKeyPressed(key),
+              'key-highlighted': isKeyHighlighted(key),
+              'key-shake': isKeyShaking(key),
               'space-key': key === '空格'
             }"
             @click="inputKey(key)"
@@ -388,6 +364,14 @@ export default {
       consecutiveCorrect: 0, // 连续正确次数
       helpCount: 3,
       currentInput: '',
+      
+      // 帮助功能相关
+      isHelpActive: false, // 是否正在使用帮助
+      helpTargetWord: null, // 帮助目标单词
+      helpCurrentLetterIndex: 0, // 当前应该输入的字母索引
+      highlightedKey: '', // 当前高亮的按键
+      shakingKey: '', // 当前晃动的按键
+      shakeTimer: null, // 晃动定时器
       inputPlaceholder: '',
       gameConfig: getGameConfig(),
       gameTimer: null, // 游戏计时器
@@ -476,6 +460,9 @@ export default {
     // 停止游戏计时器
     this.stopGameTimer()
     
+    // 清除帮助状态
+    this.clearHelpState()
+    
     // 移除配置更新监听
     if (this.configUpdateHandler) {
       offConfigUpdate(this.configUpdateHandler)
@@ -527,6 +514,16 @@ export default {
       return this.pressedKeys.has(key)
     },
     
+    // 检查按键是否被高亮（帮助功能）
+    isKeyHighlighted(key) {
+      return this.isHelpActive && this.highlightedKey === key
+    },
+    
+    // 检查按键是否在晃动（帮助功能）
+    isKeyShaking(key) {
+      return this.shakingKey === key
+    },
+    
     // 处理输入框键盘事件
     handleInputKeyDown(event) {
       const key = event.key.toUpperCase()
@@ -536,17 +533,53 @@ export default {
         this.pressedKeys.add(key)
         // 阻止默认输入，我们手动控制
         event.preventDefault()
-        this.currentInput += key
+        
+        // 如果正在使用帮助功能，验证输入
+        if (this.isHelpActive && this.helpTargetWord) {
+          const expectedLetter = this.helpTargetWord.english[this.helpCurrentLetterIndex].toUpperCase()
+          
+          if (key === expectedLetter) {
+            // 输入正确，添加到输入框
+            this.currentInput += key
+            this.helpCurrentLetterIndex++
+            
+            // 检查是否完成了整个单词
+            if (this.helpCurrentLetterIndex >= this.helpTargetWord.english.length) {
+              // 完成帮助，清除帮助状态
+              this.clearHelpState()
+            } else {
+              // 高亮下一个字母
+              this.highlightNextLetter()
+            }
+          } else {
+            // 输入错误，晃动正确的按键
+            this.shakeWrongKey(expectedLetter)
+            console.log('帮助模式：输入错误，期望', expectedLetter, '实际输入', key)
+          }
+        } else {
+          // 非帮助模式，正常输入
+          this.currentInput += key
+        }
       }
       
       // 处理空格键
       if (event.key === ' ') {
+        // 帮助模式下不允许空格
+        if (this.isHelpActive) {
+          event.preventDefault()
+          return
+        }
         // 允许空格输入
         return
       }
       
       // 处理退格键
       if (event.key === 'Backspace') {
+        // 帮助模式下处理退格
+        if (this.isHelpActive && this.helpCurrentLetterIndex > 0) {
+          this.helpCurrentLetterIndex--
+          this.highlightNextLetter()
+        }
         // 允许默认的退格行为
         return
       }
@@ -644,10 +677,13 @@ export default {
           // 更新剩余单词数
           this.remainingWords = this.wordCards.length
           
+          // 计算帮助次数：单词数量的十分之一，最低3次
+          this.helpCount = Math.max(3, Math.floor(this.wordCards.length / 10))
+          
           // 生成随机位置
           this.generateRandomPositions()
           
-          console.log('加载了', this.wordCards.length, '个单词')
+          console.log('加载了', this.wordCards.length, '个单词，帮助次数：', this.helpCount)
         } else {
           throw new Error('无效的单词数据响应')
         }
@@ -681,6 +717,9 @@ export default {
       this.remainingWords = this.wordCards.length
       this.isGamePaused = false
       this.currentInput = ''
+      
+      // 清除帮助状态
+      this.clearHelpState()
       
       // 重置所有词卡状态
       this.wordCards.forEach(card => {
@@ -879,9 +918,38 @@ export default {
     inputKey(key) {
       // 处理空格键
       if (key === '空格') {
+        // 帮助模式下不允许空格
+        if (this.isHelpActive) {
+          return
+        }
         this.currentInput += ' '
       } else {
-        this.currentInput += key
+        // 如果正在使用帮助功能，验证输入
+        if (this.isHelpActive && this.helpTargetWord) {
+          const expectedLetter = this.helpTargetWord.english[this.helpCurrentLetterIndex].toUpperCase()
+          
+          if (key === expectedLetter) {
+            // 输入正确，添加到输入框
+            this.currentInput += key
+            this.helpCurrentLetterIndex++
+            
+            // 检查是否完成了整个单词
+            if (this.helpCurrentLetterIndex >= this.helpTargetWord.english.length) {
+              // 完成帮助，清除帮助状态
+              this.clearHelpState()
+            } else {
+              // 高亮下一个字母
+              this.highlightNextLetter()
+            }
+          } else {
+            // 输入错误，晃动正确的按键
+            this.shakeWrongKey(expectedLetter)
+            console.log('帮助模式：输入错误，期望', expectedLetter, '实际输入', key)
+          }
+        } else {
+          // 非帮助模式，正常输入
+          this.currentInput += key
+        }
       }
       
       // 模拟按键效果
@@ -993,6 +1061,11 @@ export default {
       
       // 清空输入
       this.currentInput = ''
+      
+      // 如果提交的是帮助目标单词，清除帮助状态
+      if (this.isHelpActive && matchedCard && matchedCard.id === this.helpTargetWord?.id) {
+        this.clearHelpState()
+      }
     },
     
     // 计算单词得分（字母个数）
@@ -1101,11 +1174,97 @@ export default {
     },
     
     useHelp() {
-      if (this.helpCount > 0) {
+      if (this.helpCount > 0 && !this.isHelpActive) {
         this.helpCount--
-        // 帮助逻辑
-        console.log('使用帮助')
+        
+        // 随机选择一个未完成的单词
+        const availableWords = this.wordCards.filter(card => !card.completed && !card.exploding)
+        if (availableWords.length === 0) {
+          console.log('没有可用的单词进行帮助')
+          return
+        }
+        
+        // 随机选择一个单词
+        const randomIndex = Math.floor(Math.random() * availableWords.length)
+        this.helpTargetWord = availableWords[randomIndex]
+        
+        // 激活帮助模式
+        this.isHelpActive = true
+        this.helpCurrentLetterIndex = 0
+        
+        // 高亮目标单词
+        this.highlightHelpWord()
+        
+        // 高亮第一个字母
+        this.highlightNextLetter()
+        
+        console.log('使用帮助，目标单词：', this.helpTargetWord.english)
       }
+    },
+    
+    // 高亮帮助目标单词
+    highlightHelpWord() {
+      if (!this.helpTargetWord) return
+      
+      // 找到目标单词在数组中的索引
+      const wordIndex = this.wordCards.findIndex(card => card.id === this.helpTargetWord.id)
+      if (wordIndex !== -1) {
+        // 添加高亮样式类
+        this.$nextTick(() => {
+          const wordElement = document.querySelectorAll('.word-card')[wordIndex]
+          if (wordElement) {
+            wordElement.classList.add('help-highlighted')
+          }
+        })
+      }
+    },
+    
+    // 高亮下一个应该输入的字母
+    highlightNextLetter() {
+      if (!this.helpTargetWord || this.helpCurrentLetterIndex >= this.helpTargetWord.english.length) {
+        return
+      }
+      
+      const nextLetter = this.helpTargetWord.english[this.helpCurrentLetterIndex].toUpperCase()
+      this.highlightedKey = nextLetter
+      
+      console.log('高亮字母：', nextLetter, '位置：', this.helpCurrentLetterIndex)
+    },
+    
+    // 清除帮助状态
+    clearHelpState() {
+      this.isHelpActive = false
+      this.helpTargetWord = null
+      this.helpCurrentLetterIndex = 0
+      this.highlightedKey = ''
+      this.shakingKey = ''
+      
+      // 清除单词高亮
+      document.querySelectorAll('.word-card.help-highlighted').forEach(element => {
+        element.classList.remove('help-highlighted')
+      })
+      
+      // 清除晃动定时器
+      if (this.shakeTimer) {
+        clearTimeout(this.shakeTimer)
+        this.shakeTimer = null
+      }
+    },
+    
+    // 晃动错误的按键
+    shakeWrongKey(correctKey) {
+      this.shakingKey = correctKey
+      
+      // 清除之前的定时器
+      if (this.shakeTimer) {
+        clearTimeout(this.shakeTimer)
+      }
+      
+      // 设置晃动持续时间
+      this.shakeTimer = setTimeout(() => {
+        this.shakingKey = ''
+        this.shakeTimer = null
+      }, 600)
     },
     
     pauseGame() {
@@ -2167,6 +2326,56 @@ export default {
   background: #28a745;
   color: white;
   box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+/* 帮助功能样式 */
+.key-btn.key-highlighted {
+  background: #FFD700 !important;
+  color: #000 !important;
+  box-shadow: 0 0 20px rgba(255, 215, 0, 0.8) !important;
+  animation: key-highlight-pulse 1.5s ease-in-out infinite;
+  transform: scale(1.1);
+}
+
+.key-btn.key-shake {
+  animation: key-shake 0.6s ease-in-out;
+  background: #ff4757 !important;
+  color: white !important;
+}
+
+@keyframes key-highlight-pulse {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 215, 0, 1), 0 0 40px rgba(255, 215, 0, 0.6);
+  }
+}
+
+@keyframes key-shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); }
+  20%, 40%, 60%, 80% { transform: translateX(3px); }
+}
+
+/* 帮助目标单词高亮 */
+.word-card.help-highlighted {
+  border: 3px solid #FFD700 !important;
+  box-shadow: 0 0 25px rgba(255, 215, 0, 0.8) !important;
+  animation: word-highlight-pulse 2s ease-in-out infinite;
+  transform: scale(1.05) !important;
+  z-index: 100;
+}
+
+@keyframes word-highlight-pulse {
+  0%, 100% {
+    border-color: #FFD700;
+    box-shadow: 0 0 25px rgba(255, 215, 0, 0.8);
+  }
+  50% {
+    border-color: #FFA500;
+    box-shadow: 0 0 35px rgba(255, 215, 0, 1), 0 0 45px rgba(255, 165, 0, 0.6);
+  }
 }
 
 /* 底部导航栏 */

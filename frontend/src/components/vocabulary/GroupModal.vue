@@ -82,7 +82,7 @@
 
 <script>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { vocabularyApi } from '../../utils/vocabularyApi.js'
+import { vocabularyApi } from '@/utils/vocabularyApi.js'
 
 export default {
   name: 'GroupModal',

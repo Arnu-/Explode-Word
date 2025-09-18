@@ -1,7 +1,6 @@
 <template>
   <div class="vocabulary-management">
     <div class="header">
-      <h1>词库管理</h1>
       <div class="header-actions">
         <button @click="showCreateLibraryModal = true" class="btn btn-primary">
           <span class="icon">+</span>
@@ -141,9 +140,9 @@
 
 <script>
 import { ref, reactive, onMounted } from 'vue'
-import { vocabularyApi } from '../utils/vocabularyApi.js'
-import LibraryDetailPanel from '../components/vocabulary/LibraryDetailPanel.vue'
-import LibraryModal from '../components/vocabulary/LibraryModal.vue'
+import { vocabularyApi } from '@/utils/vocabularyApi.js'
+import LibraryDetailPanel from '@/components/vocabulary/LibraryDetailPanel.vue'
+import LibraryModal from '@/components/vocabulary/LibraryModal.vue'
 
 export default {
   name: 'VocabularyManagement',
