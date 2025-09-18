@@ -27,6 +27,10 @@ instance/
 
 # Environment variables
 .env
+.env.production
+.env.staging
+.env.local
+.env.*.local
 .venv
 env/
 venv/
@@ -38,6 +42,9 @@ venv.bak/
 *.db
 *.sqlite
 *.sqlite3
+explode_word.db
+explode_word_prod.db
+explode_word_*.db
 
 # IDE
 .vscode/
@@ -66,3 +73,15 @@ htmlcov/
 
 # Migrations (uncomment if you want to ignore migrations)
 # migrations/
+
+# Production files
+*.pid
+*.sock
+gunicorn.pid
+supervisor.conf
+nginx.conf
+
+# Backup files
+*.backup
+*.bak
+backup_*
