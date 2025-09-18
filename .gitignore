@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 .DS_Store
 dist
+dist.zip
 dist-ssr
 coverage
 *.local
@@ -31,3 +32,7 @@ coverage
 # codebuddy
 .codebuddy/
 /assets/
+
+# Mac os
+**/.DS_Store
+**/__MACOSX/
