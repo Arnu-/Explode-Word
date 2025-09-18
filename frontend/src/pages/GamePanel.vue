@@ -66,7 +66,8 @@
     <div class="game-content">
       <!-- 左侧统计面板 -->
       <aside class="stats-panel">
-        <div class="stat-item">
+        <!-- 挑战模式显示得分 -->
+        <div v-if="gameMode === 'challenge'" class="stat-item">
           <span class="stat-label">得分：</span>
           <span class="stat-value">{{ score }}</span>
         </div>
@@ -79,18 +80,30 @@
           <span class="stat-value">{{ remainingWords }}个单词</span>
         </div>
         <div class="stat-item">
+          <span class="stat-label">正确：</span>
+          <span class="stat-value">{{ correctCount }}次</span>
+        </div>
+        <div class="stat-item">
           <span class="stat-label">错误：</span>
           <span class="stat-value">{{ errors }}次</span>
+        </div>
+        <!-- 挑战模式显示连击数 -->
+        <div v-if="gameMode === 'challenge'" class="stat-item">
+          <span class="stat-label">连击：</span>
+          <span class="stat-value combo-value" :class="getComboClass()">{{ consecutiveCorrect }}</span>
         </div>
         
         <!-- 游戏控制按钮 -->
         <div class="game-controls">
           <button class="control-btn pause-btn" @click="pauseGame">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <svg v-if="!isGamePaused" width="16" height="16" viewBox="0 0 24 24" fill="none">
               <rect x="6" y="4" width="4" height="16" fill="currentColor"/>
               <rect x="14" y="4" width="4" height="16" fill="currentColor"/>
             </svg>
-            暂停
+            <svg v-else width="16" height="16" viewBox="0 0 24 24" fill="none">
+              <polygon points="5,3 19,12 5,21" fill="currentColor"/>
+            </svg>
+            {{ isGamePaused ? '继续' : '暂停' }}
           </button>
           <button class="control-btn exit-btn" @click="exitGame">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -105,6 +118,14 @@
 
       <!-- 中央游戏区域 -->
       <main class="game-area">
+        <!-- 连击奖励浮动提示 -->
+        <div v-if="showComboEffect" class="combo-effect-overlay">
+          <div class="combo-effect-popup" :class="comboEffectClass">
+            <div class="combo-text">{{ comboEffectText }}</div>
+            <div class="combo-bonus">+{{ comboEffectBonus }}分</div>
+          </div>
+        </div>
+        
         <div class="word-cards-container">
           <div 
             v-for="(word, index) in wordCards" 
@@ -150,14 +171,73 @@
                 :style="{ background: getFragmentColor(word.difficulty) }"
               ></div>
               
-              <!-- 加分提示 -->
-              <div class="score-popup">
-                +{{ getScoreByDifficulty(word.difficulty) }}
+              <!-- 加分提示（仅挑战模式显示） -->
+              <div v-if="gameMode === 'challenge'" class="score-popup">
+                +{{ calculateWordScore(word.english) }}
               </div>
             </div>
           </div>
         </div>
       </main>
+    </div>
+
+    <!-- 游戏结束弹窗 -->
+    <div v-if="showGameEndModal" class="game-end-overlay">
+      <div class="game-end-container">
+        <div class="game-end-header">
+          <h2 class="game-end-title">🎉 游戏结束！</h2>
+          <div class="game-mode-badge" :class="gameMode">
+            {{ gameMode === 'training' ? '训练模式' : '挑战模式' }}
+          </div>
+        </div>
+        
+        <div class="game-results">
+          <div class="result-item" v-if="gameMode === 'challenge'">
+            <span class="result-label">最终得分</span>
+            <span class="result-value score-value">{{ score }}</span>
+          </div>
+          <div class="result-item">
+            <span class="result-label">游戏用时</span>
+            <span class="result-value">{{ formatTime(timeUsed) }}</span>
+          </div>
+          <div class="result-item">
+            <span class="result-label">正确次数</span>
+            <span class="result-value correct-value">{{ correctCount }}</span>
+          </div>
+          <div class="result-item">
+            <span class="result-label">错误次数</span>
+            <span class="result-value error-value">{{ errors }}</span>
+          </div>
+          <div class="result-item" v-if="gameMode === 'challenge' && maxConsecutiveCorrect > 0">
+            <span class="result-label">最高连击</span>
+            <span class="result-value combo-value">{{ maxConsecutiveCorrect }}</span>
+          </div>
+        </div>
+        
+        <div class="game-end-actions">
+          <button class="action-btn next-level-btn" @click="goToNextLevel">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            下一关
+          </button>
+          <button class="action-btn select-level-btn" @click="goToLevelSelection">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <rect x="3" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="14" y="3" width="7" height="7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="14" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              <rect x="3" y="14" width="7" height="7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            选择关卡
+          </button>
+          <button class="action-btn exit-btn" @click="exitToHome">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+              <path d="M3 9L12 2L21 9V20C21 20.5304 20.7893 21.0391 20.4142 21.4142C20.0391 21.7893 19.5304 22 19 22H5C4.46957 22 3.96086 21.7893 3.58579 21.4142C3.21071 21.0391 3 20.5304 3 20V9Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            退出游戏
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- 底部输入区域 -->
@@ -273,14 +353,28 @@ export default {
     return {
       showModeSelection: true,
       gameMode: null, // 'training' 或 'challenge'
-      score: 368,
-      timeUsed: 90, // 秒
-      remainingWords: 31,
-      errors: 2,
+      score: 0,
+      timeUsed: 0, // 秒
+      remainingWords: 10,
+      errors: 0,
+      correctCount: 0, // 正确次数
+      consecutiveCorrect: 0, // 连续正确次数
       helpCount: 3,
       currentInput: '',
       inputPlaceholder: '',
       gameConfig: getGameConfig(),
+      gameTimer: null, // 游戏计时器
+      isGamePaused: false, // 游戏是否暂停
+      
+      // 连击效果相关
+      showComboEffect: false,
+      comboEffectText: '',
+      comboEffectBonus: 0,
+      comboEffectClass: '',
+      
+      // 游戏结束弹窗
+      showGameEndModal: false,
+      maxConsecutiveCorrect: 0, // 最高连击数
       
       // 虚拟键盘布局
       keyboardRow1: ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
@@ -429,6 +523,9 @@ export default {
     document.removeEventListener('touchmove', this.handleDrag)
     document.removeEventListener('touchend', this.endDrag)
     
+    // 停止游戏计时器
+    this.stopGameTimer()
+    
     // 移除配置更新监听
     if (this.configUpdateHandler) {
       offConfigUpdate(this.configUpdateHandler)
@@ -523,10 +620,56 @@ export default {
       this.gameMode = mode
       this.showModeSelection = false
       
+      // 重置游戏状态
+      this.resetGameState()
+      
       // 选择模式后生成词卡位置
       this.generateRandomPositions()
       
+      // 开始计时
+      this.startGameTimer()
+      
       console.log('选择模式:', mode)
+    },
+    
+    // 重置游戏状态
+    resetGameState() {
+      this.score = 0
+      this.timeUsed = 0
+      this.errors = 0
+      this.correctCount = 0
+      this.consecutiveCorrect = 0
+      this.remainingWords = this.wordCards.length
+      this.isGamePaused = false
+      this.currentInput = ''
+      
+      // 重置所有词卡状态
+      this.wordCards.forEach(card => {
+        card.completed = false
+        card.exploding = false
+        card.isDragging = false
+      })
+    },
+    
+    // 开始游戏计时器
+    startGameTimer() {
+      if (this.gameTimer) {
+        clearInterval(this.gameTimer)
+      }
+      
+      this.gameTimer = setInterval(() => {
+        if (!this.isGamePaused) {
+          this.timeUsed++
+        }
+      }, 1000)
+    },
+    
+    // 停止游戏计时器
+    stopGameTimer() {
+      if (this.gameTimer) {
+        clearInterval(this.gameTimer)
+        this.gameTimer = null
+      }
     },
     
     
@@ -731,22 +874,57 @@ export default {
           exploding: true
         }
         
-        // 更新游戏统计
-        this.score += this.getScoreByDifficulty(matchedCard.difficulty)
+        // 更新统计
+        this.correctCount++
+        this.consecutiveCorrect++
         this.remainingWords--
+        
+        // 更新最高连击记录
+        if (this.consecutiveCorrect > this.maxConsecutiveCorrect) {
+          this.maxConsecutiveCorrect = this.consecutiveCorrect
+        }
+        
+        // 计算得分（仅在挑战模式）
+        if (this.gameMode === 'challenge') {
+          const baseScore = this.calculateWordScore(matchedCard.english)
+          let totalScore = baseScore
+          
+          // 检查连击奖励
+          const comboBonus = this.getComboBonus(this.consecutiveCorrect)
+          if (comboBonus > 0) {
+            totalScore += comboBonus
+            this.showComboBonusEffect(comboBonus)
+          }
+          
+          this.score += totalScore
+          console.log(`单词正确！基础得分: ${baseScore}, 连击奖励: ${comboBonus}, 总得分: ${totalScore}`)
+        }
         
         // 延迟移除卡片（等待动画完成）
         setTimeout(() => {
           this.wordCards.splice(matchedCardIndex, 1)
+          
+          // 检查游戏是否结束
+          if (this.wordCards.length === 0) {
+            this.gameComplete()
+          }
         }, 800)
         
-        console.log('单词正确！得分:', this.getScoreByDifficulty(matchedCard.difficulty))
       } else {
         // 单词错误
         this.errors++
-        console.log('单词错误！')
+        this.consecutiveCorrect = 0 // 重置连击
         
-        // 可以添加错误提示动画
+        // 挑战模式扣分
+        if (this.gameMode === 'challenge') {
+          // 找到最可能的单词进行扣分计算（这里简化处理，可以改进）
+          const avgWordLength = Math.round(this.wordCards.reduce((sum, card) => sum + card.english.length, 0) / this.wordCards.length)
+          const penalty = this.calculateScorePenalty(avgWordLength)
+          this.score = Math.max(0, this.score - penalty)
+          console.log(`单词错误！扣分: ${penalty}`)
+        }
+        
+        // 显示错误反馈
         this.showErrorFeedback()
       }
       
@@ -754,16 +932,87 @@ export default {
       this.currentInput = ''
     },
     
-    // 根据难度获取得分
-    getScoreByDifficulty(difficulty) {
-      const scores = {
-        1: 10,
-        2: 20,
-        3: 30,
-        4: 50
-      }
-      return scores[difficulty] || 10
+    // 计算单词得分（字母个数）
+    calculateWordScore(word) {
+      return word.length
     },
+    
+    // 计算错误扣分（字母个数的一半，单数则减一再除以2）
+    calculateScorePenalty(wordLength) {
+      if (wordLength % 2 === 0) {
+        return Math.floor(wordLength / 2)
+      } else {
+        return Math.floor((wordLength - 1) / 2)
+      }
+    },
+    
+    // 获取连击奖励
+    getComboBonus(consecutiveCount) {
+      if (consecutiveCount === 8) {
+        return 8
+      } else if (consecutiveCount === 5) {
+        return 5
+      } else if (consecutiveCount === 3) {
+        return 3
+      }
+      return 0
+    },
+    
+    // 显示连击奖励效果
+    showComboBonusEffect(bonus) {
+      // 设置连击效果文本和样式
+      if (bonus === 3) {
+        this.comboEffectText = '三连对！'
+        this.comboEffectClass = 'combo-effect-rare'
+      } else if (bonus === 5) {
+        this.comboEffectText = '五连对！'
+        this.comboEffectClass = 'combo-effect-epic'
+      } else if (bonus === 8) {
+        this.comboEffectText = '八连对！'
+        this.comboEffectClass = 'combo-effect-legendary'
+      }
+      
+      this.comboEffectBonus = bonus
+      this.showComboEffect = true
+      
+      // 2秒后隐藏效果
+      setTimeout(() => {
+        this.showComboEffect = false
+        this.comboEffectText = ''
+        this.comboEffectBonus = 0
+        this.comboEffectClass = ''
+      }, 2000)
+      
+      console.log(`连击奖励！${this.comboEffectText}+${bonus}分`)
+    },
+    
+    // 游戏完成
+    gameComplete() {
+      this.stopGameTimer()
+      this.showGameEndModal = true
+      console.log('游戏完成！')
+    },
+    
+    // 下一关
+    goToNextLevel() {
+      const nextLevelId = parseInt(this.levelId) + 1
+      this.$router.push({ 
+        name: 'game', 
+        params: { levelId: nextLevelId }
+      })
+    },
+    
+    // 选择关卡
+    goToLevelSelection() {
+      this.$router.push({ name: 'levels' })
+    },
+    
+    // 退出到首页
+    exitToHome() {
+      this.$router.push({ name: 'wordblast' })
+    },
+    
+
     
     // 显示错误反馈
     showErrorFeedback() {
@@ -786,15 +1035,26 @@ export default {
     },
     
     pauseGame() {
-      // 暂停游戏逻辑
-      console.log('暂停游戏')
-      // 可以在这里添加暂停弹窗或状态切换
+      this.isGamePaused = !this.isGamePaused
+      console.log(this.isGamePaused ? '游戏暂停' : '游戏继续')
     },
     
     exitGame() {
-      // 退出游戏逻辑
+      this.stopGameTimer()
       console.log('退出游戏')
       this.$router.push({ name: 'levels' })
+    },
+    
+    // 获取连击样式类
+    getComboClass() {
+      if (this.consecutiveCorrect >= 8) {
+        return 'combo-legendary'
+      } else if (this.consecutiveCorrect >= 5) {
+        return 'combo-epic'
+      } else if (this.consecutiveCorrect >= 3) {
+        return 'combo-rare'
+      }
+      return ''
     },
     
     // 开始拖拽
@@ -1091,6 +1351,306 @@ export default {
 .stat-value {
   font-weight: bold;
   color: white;
+}
+
+/* 连击数值样式 */
+.combo-value {
+  transition: all 0.3s ease;
+}
+
+.combo-value.combo-rare {
+  color: #55efc4;
+  text-shadow: 0 0 10px rgba(85, 239, 196, 0.5);
+  animation: combo-glow 1s ease-in-out infinite alternate;
+}
+
+.combo-value.combo-epic {
+  color: #fdcb6e;
+  text-shadow: 0 0 15px rgba(253, 203, 110, 0.7);
+  animation: combo-glow 0.8s ease-in-out infinite alternate;
+}
+
+.combo-value.combo-legendary {
+  color: #fd79a8;
+  text-shadow: 0 0 20px rgba(253, 121, 168, 0.9);
+  animation: combo-glow 0.6s ease-in-out infinite alternate;
+  transform: scale(1.1);
+}
+
+@keyframes combo-glow {
+  0% {
+    text-shadow: 0 0 5px currentColor;
+  }
+  100% {
+    text-shadow: 0 0 20px currentColor, 0 0 30px currentColor;
+  }
+}
+
+/* 连击效果浮动提示 */
+.combo-effect-overlay {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  pointer-events: none;
+}
+
+.combo-effect-popup {
+  background: rgba(0, 0, 0, 0.9);
+  border-radius: 20px;
+  padding: 20px 30px;
+  text-align: center;
+  backdrop-filter: blur(10px);
+  border: 2px solid;
+  animation: combo-popup-animation 2s ease-out forwards;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+.combo-effect-rare {
+  border-color: #55efc4;
+  box-shadow: 0 10px 30px rgba(85, 239, 196, 0.4);
+}
+
+.combo-effect-epic {
+  border-color: #fdcb6e;
+  box-shadow: 0 10px 30px rgba(253, 203, 110, 0.4);
+}
+
+.combo-effect-legendary {
+  border-color: #fd79a8;
+  box-shadow: 0 10px 30px rgba(253, 121, 168, 0.4);
+}
+
+.combo-text {
+  font-size: 24px;
+  font-weight: bold;
+  color: white;
+  margin-bottom: 8px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.combo-bonus {
+  font-size: 20px;
+  font-weight: bold;
+  color: #FFD700;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+.combo-effect-rare .combo-text {
+  color: #55efc4;
+  text-shadow: 0 0 10px rgba(85, 239, 196, 0.8);
+}
+
+.combo-effect-epic .combo-text {
+  color: #fdcb6e;
+  text-shadow: 0 0 15px rgba(253, 203, 110, 0.8);
+}
+
+.combo-effect-legendary .combo-text {
+  color: #fd79a8;
+  text-shadow: 0 0 20px rgba(253, 121, 168, 0.8);
+}
+
+@keyframes combo-popup-animation {
+  0% {
+    transform: translateX(-50%) translateY(-20px) scale(0.5);
+    opacity: 0;
+  }
+  15% {
+    transform: translateX(-50%) translateY(0) scale(1.2);
+    opacity: 1;
+  }
+  30% {
+    transform: translateX(-50%) translateY(0) scale(1);
+    opacity: 1;
+  }
+  85% {
+    transform: translateX(-50%) translateY(0) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) translateY(-10px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+/* 游戏结束弹窗样式 */
+.game-end-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(10px);
+  animation: modal-fade-in 0.3s ease-out;
+}
+
+.game-end-container {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  border-radius: 24px;
+  padding: 40px;
+  text-align: center;
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  max-width: 500px;
+  width: 90%;
+  animation: modal-slide-up 0.4s ease-out;
+}
+
+.game-end-header {
+  margin-bottom: 30px;
+}
+
+.game-end-title {
+  font-size: 32px;
+  font-weight: bold;
+  color: white;
+  margin-bottom: 15px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.game-mode-badge {
+  display: inline-block;
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.game-mode-badge.training {
+  background: linear-gradient(135deg, #74b9ff, #0984e3);
+}
+
+.game-mode-badge.challenge {
+  background: linear-gradient(135deg, #fd79a8, #e84393);
+}
+
+.game-results {
+  margin-bottom: 40px;
+}
+
+.result-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.result-label {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+}
+
+.result-value {
+  font-size: 18px;
+  font-weight: bold;
+  color: white;
+}
+
+.score-value {
+  color: #FFD700;
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.correct-value {
+  color: #55efc4;
+}
+
+.error-value {
+  color: #ff7675;
+}
+
+.combo-value {
+  color: #fd79a8;
+  text-shadow: 0 0 10px rgba(253, 121, 168, 0.5);
+}
+
+.game-end-actions {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 15px 25px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: white;
+  min-width: 140px;
+}
+
+.next-level-btn {
+  background: linear-gradient(135deg, #55efc4, #00b894);
+  box-shadow: 0 4px 15px rgba(85, 239, 196, 0.3);
+}
+
+.next-level-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(85, 239, 196, 0.4);
+}
+
+.select-level-btn {
+  background: linear-gradient(135deg, #74b9ff, #0984e3);
+  box-shadow: 0 4px 15px rgba(116, 185, 255, 0.3);
+}
+
+.select-level-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(116, 185, 255, 0.4);
+}
+
+.action-btn.exit-btn {
+  background: linear-gradient(135deg, #ff7675, #d63031);
+  box-shadow: 0 4px 15px rgba(255, 118, 117, 0.3);
+}
+
+.action-btn.exit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(255, 118, 117, 0.4);
+}
+
+@keyframes modal-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes modal-slide-up {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* 游戏控制按钮 */
@@ -1492,6 +2052,38 @@ export default {
   
   .virtual-keyboard {
     transform: scale(0.9);
+  }
+  
+  /* 游戏结束弹窗响应式 */
+  .game-end-container {
+    padding: 30px 20px;
+    max-width: 95%;
+  }
+  
+  .game-end-title {
+    font-size: 24px;
+  }
+  
+  .game-end-actions {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .action-btn {
+    width: 100%;
+    min-width: auto;
+  }
+  
+  .result-item {
+    padding: 12px 15px;
+  }
+  
+  .result-label {
+    font-size: 14px;
+  }
+  
+  .result-value {
+    font-size: 16px;
   }
 }
 </style>
