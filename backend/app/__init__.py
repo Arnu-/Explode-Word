@@ -28,7 +28,11 @@ def create_app(config_name='development'):
     app = Flask(__name__)
     
     # 加载配置
-    app.config.from_object(config[config_name])
+    config_obj = config[config_name]
+    app.config.from_object(config_obj)
+    
+    # 初始化配置（动态设置数据库URI）
+    config_obj.init_app(app)
     
     # 初始化扩展
     db.init_app(app)

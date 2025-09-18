@@ -28,15 +28,15 @@ const envConfig = {
     LOG_LEVEL: 'debug'
   },
   production: {
-    // 生产环境：直接访问后端服务
-    API_BASE_URL: 'https://your-backend-domain.com/api',
+    // 生产环境：已经通过nginx代理到api路径了。
+    API_BASE_URL: '/api',
     API_TIMEOUT: 15000,
     ENABLE_MOCK: false,
     LOG_LEVEL: 'error'
   },
   test: {
-    // 测试环境
-    API_BASE_URL: 'https://test-backend-domain.com/api',
+    // 测试环境：使用 Vite 代理
+    API_BASE_URL: '/api',
     API_TIMEOUT: 8000,
     ENABLE_MOCK: true,
     LOG_LEVEL: 'warn'

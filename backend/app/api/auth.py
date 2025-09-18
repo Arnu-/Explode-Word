@@ -190,3 +190,39 @@ def change_password():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': f'密码修改失败: {str(e)}'}), 500
+
+
+@auth_bp.route('/logout', methods=['POST'])
+@jwt_required()
+def logout():
+    """用户登出"""
+    try:
+        # 获取当前用户信息
+        user_id = get_jwt_identity()
+        
+        # 这里可以添加将token加入黑名单的逻辑
+        # 目前简单返回成功消息
+        
+        return jsonify({'message': '登出成功'}), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'登出失败: {str(e)}'}), 500
+
+
+@auth_bp.route('/me', methods=['GET'])
+@jwt_required()
+def get_current_user():
+    """获取当前用户信息"""
+    try:
+        user_id = int(get_jwt_identity())
+        user = User.query.get(user_id)
+        
+        if not user:
+            return jsonify({'error': '用户不存在'}), 404
+        
+        return jsonify({
+            'user': user.to_dict()
+        }), 200
+        
+    except Exception as e:
+        return jsonify({'error': f'获取用户信息失败: {str(e)}'}), 500
